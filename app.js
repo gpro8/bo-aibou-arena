@@ -113,6 +113,7 @@ function renderSetup() {
     const attr = field(e, "属性") || (e.types || []).join("·") || "—";
     $("[data-mate-blurb]").textContent = `${e.name} · ${e.species || ""} · ${attr} · ${skill} · 主 ${e.owner || "未記入"}`;
   }
+  paintRec();
 }
 
 function bootArena() {
