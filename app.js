@@ -9,9 +9,10 @@ const MODES = [
   { id: "hard", label: "きつい", secs: 60, pace: 1.35 },
 ];
 const STAGES = [
-  { id: "yang", label: "陽", bg: 0xe8dcc8, foe: 0x5a4030 },
-  { id: "yin", label: "陰", bg: 0x1b1916, foe: 0xc49a2a },
+  { id: "yang", label: "陽", bg: 0xe8dcc8, foe: 0x4a2060 },
+  { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
 ];
+const XP_COLOR = 0x7ecfff;
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -25,17 +26,17 @@ function kit(e) {
   if (e.id === "sumi") {
     return {
       color: 0xf8b500,
-      hp: 20,
+      hp: 32,
       speed: 210,
-      rate: 480,
+      rate: 640,
       skill: "ネオンスパーク",
       kind: "spark",
-      dmg: 8,
+      dmg: 5,
     };
   }
   return {
     color: 0xf3eadc,
-    hp: 28,
+    hp: 36,
     speed: 155,
     rate: 520,
     skill: field(e, "特技") || "ふわふわで癒す",
@@ -98,6 +99,7 @@ function bootArena() {
     skill: $("[data-hud-skill]"),
     time: $("[data-hud-time]"),
     hp: $("[data-hud-hp]"),
+    hpbar: $("[data-hud-hpbar]"),
     lv: $("[data-hud-lv]"),
   };
   hud.name.textContent = mate.name;
@@ -171,14 +173,16 @@ function bootArena() {
       this.paintHud();
     }
     paintHud() {
-      hud.hp.textContent = `心 ${Math.max(0, Math.ceil(this.hp))}`;
+      const now = Math.max(0, Math.ceil(this.hp));
+      hud.hp.textContent = `心 ${now}/${this.maxHp}`;
+      if (hud.hpbar) hud.hpbar.style.width = `${Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100))}%`;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
     }
     skillDmg() {
-      return k.dmg + (this.lv - 1) * 3;
+      return k.dmg + (this.lv - 1) * 2;
     }
     spawn() {
       const w = this.scale.width;
@@ -189,7 +193,7 @@ function bootArena() {
       const foe = this.add.circle(x, y, 12, stage.foe);
       this.physics.add.existing(foe);
       foe.body.setCircle(12);
-      foe.hp = 20;
+      foe.hp = 20 + (this.lv - 1) * 2;
       this.foes.add(foe);
     }
     flash(foe) {
@@ -224,9 +228,10 @@ function bootArena() {
       this.pop(foe.x, foe.y, dmg);
       if (foe.hp <= 0) {
         if (Math.random() < 0.55) {
-          const gem = this.add.circle(foe.x, foe.y, 8, 0xf8b500);
+          const gem = this.add.circle(foe.x, foe.y, 8, XP_COLOR);
           this.physics.add.existing(gem);
           gem.body.setCircle(8);
+          gem.setStrokeStyle(2, 0xffffff, 0.95);
           this.gems.add(gem);
         }
         foe.destroy();
@@ -252,27 +257,20 @@ function bootArena() {
         this.hp = Math.min(this.maxHp, this.hp + 1.2);
         return;
       }
-      const target = this.closest();
-      const reach = 110 + this.lv * 8;
-      let x;
-      let y;
-      if (target) {
-        x = target.x;
-        y = target.y;
-      } else {
-        x = this.player.x + (this.face > 0 ? reach : -reach);
-        y = this.player.y;
-      }
-      const spark = this.add.circle(x, y, 22, NEON[0], 0.9);
-      spark.setStrokeStyle(3, 0xffffff, 0.8);
+      const reach = 72;
+      const dir = this.face > 0 ? 1 : -1;
+      const x = this.player.x + dir * reach;
+      const y = this.player.y + Phaser.Math.Between(-18, 18);
+      const spark = this.add.circle(x, y, 16, NEON[0], 0.85);
+      spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
-      spark.life = 1500;
+      spark.life = 820;
       spark.tick = 0;
       spark.hue = 0;
       this.sparks.push(spark);
     }
     tickSparks(delta) {
-      const r = 48 + this.lv * 4;
+      const r = 30 + this.lv * 2;
       const dmg = this.skillDmg();
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
@@ -281,7 +279,7 @@ function bootArena() {
         s.hue = (s.hue + delta * 0.012) % NEON.length;
         s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
         s.setScale(1 + 0.08 * Math.sin(s.life * 0.02));
-        if (s.tick >= 180) {
+        if (s.tick >= 300) {
           s.tick = 0;
           this.foes.children.iterate((f) => {
             if (!f || !f.active) return;
@@ -382,8 +380,8 @@ function bootArena() {
         this.physics.moveToObject(f, this.player, 70 + this.lv * 8);
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
         if (d < 34 && this.hurtTick <= 0) {
-          this.hp -= 4;
-          this.hurtTick = 400;
+          this.hp -= 2;
+          this.hurtTick = 650;
           if (this.hp <= 0) this.finish(false);
         }
       });

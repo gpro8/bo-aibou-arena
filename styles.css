@@ -71,5 +71,15 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   font-size: 13px;
 }
 #hud [data-hud-skill] { color: var(--gold); }
+.hpbar {
+  width: 72px;
+  height: 8px;
+  background: #3a342c;
+  border-radius: 99px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+}
+.hpbar i { display: block; height: 100%; width: 100%; background: #e07a7a; }
 #arena { width: 100%; height: min(70vh, 540px); background: #000; }
 #arena canvas { display: block; }
