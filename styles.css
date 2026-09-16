@@ -1,0 +1,73 @@
+:root {
+  --bg: #12100e;
+  --ink: #f3eadc;
+  --muted: #9a8f82;
+  --gold: #f8b500;
+  --panel: #1b1815;
+  --line: #3a342c;
+  --yang: #e8dcc8;
+  --yin: #1b1916;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+#app { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+.screen { display: flex; flex-direction: column; gap: 14px; }
+.hidden { display: none; }
+.kicker { letter-spacing: 0.2em; color: var(--gold); margin: 0; font-size: 12px; }
+h1 { font-size: 28px; margin: 0; font-weight: 700; }
+h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
+.blurb, .hint, .thanks { color: var(--muted); margin: 0; line-height: 1.6; }
+.thanks { color: var(--gold); font-size: 18px; }
+.col, .row { display: flex; gap: 10px; }
+.col { flex-direction: column; }
+.row { justify-content: space-between; }
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 12px 18px;
+  font: inherit;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn.gold { background: var(--gold); color: #1a1408; border-color: var(--gold); font-weight: 700; }
+.btn.ghost { background: transparent; }
+.btn.tiny { padding: 6px 10px; font-size: 12px; }
+.btn.on { outline: 2px solid var(--gold); }
+.chips, .mates { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip, .mate {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.chip.on, .mate.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.mate { min-width: 140px; }
+.mate b { display: block; }
+.mate span { color: var(--muted); font-size: 12px; }
+.how { margin: 0; padding-left: 1.2em; color: var(--muted); line-height: 1.7; }
+.play { max-width: none; padding: 0; }
+#hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #0c0b0a;
+  font-size: 13px;
+}
+#arena { width: 100%; height: min(70vh, 540px); background: #000; }
+#arena canvas { display: block; }

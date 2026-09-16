@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>相棒あそび · BushiDAO</title>
+  <meta name="description" content="BOの相棒と走る。入場・参加無料。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <section class="screen" data-screen="title">
+      <p class="kicker">BushiDAO</p>
+      <h1>相棒あそび</h1>
+      <p class="blurb">図鑑の相棒と走る。入場・参加無料。</p>
+      <div class="col">
+        <button type="button" class="btn gold" data-go="setup">遊ぶ</button>
+        <button type="button" class="btn ghost" data-how>遊び方</button>
+        <a class="btn ghost" href="https://gpro8.github.io/bo-aibou-zukan/" target="_blank" rel="noopener noreferrer">図鑑</a>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="how">
+      <h1>遊び方</h1>
+      <ul class="how">
+        <li>動かすだけ。攻撃は相棒がする</li>
+        <li>画面を指でなぞる / WASD / 矢印</li>
+        <li>時間まで生きる</li>
+        <li>図鑑にいる子だけ走れる</li>
+      </ul>
+      <button type="button" class="btn gold" data-go="title">もどる</button>
+    </section>
+
+    <section class="screen hidden" data-screen="setup">
+      <h1>準備</h1>
+      <h2>難易度</h2>
+      <div class="chips" data-modes></div>
+      <h2>場</h2>
+      <div class="chips" data-stages></div>
+      <h2>相棒</h2>
+      <div class="mates" data-mates></div>
+      <p class="hint" data-mate-blurb></p>
+      <div class="row">
+        <button type="button" class="btn ghost" data-go="title">もどる</button>
+        <button type="button" class="btn gold" data-run>走る</button>
+      </div>
+    </section>
+
+    <section class="screen hidden play" data-screen="play">
+      <div id="hud">
+        <span data-hud-name></span>
+        <span data-hud-time></span>
+        <span data-hud-hp></span>
+        <span data-hud-lv></span>
+        <button type="button" class="btn tiny" data-pause>一時停止</button>
+      </div>
+      <div id="arena"></div>
+    </section>
+
+    <section class="screen hidden" data-screen="pause">
+      <h1>一時停止</h1>
+      <div class="col">
+        <button type="button" class="btn gold" data-resume>つづける</button>
+        <button type="button" class="btn ghost" data-quit>やめる</button>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="result">
+      <h1 data-result-title></h1>
+      <p class="thanks" data-thanks></p>
+      <p class="hint" data-result-line></p>
+      <div class="col">
+        <button type="button" class="btn gold" data-again>もういちど</button>
+        <button type="button" class="btn ghost" data-go="title">はじめへ</button>
+      </div>
+    </section>
+  </div>
+  <script src="vendor/phaser.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
