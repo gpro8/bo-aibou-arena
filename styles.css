@@ -56,6 +56,7 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 }
 .chip.on, .mate.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 .mate { min-width: 140px; }
+.mate img { display: block; height: 72px; width: auto; margin-bottom: 6px; }
 .mate b { display: block; }
 .mate span { color: var(--muted); font-size: 12px; }
 .how { margin: 0; padding-left: 1.2em; color: var(--muted); line-height: 1.7; }

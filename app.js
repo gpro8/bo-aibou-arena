@@ -65,11 +65,12 @@ function renderSetup() {
   ).join("");
   const mates = $("[data-mates]");
   const list = state.data.entries || [];
-  if (!state.mate) state.mate = list[0];
+  if (!state.mate) state.mate = list.find((e) => e.id === "sumi") || list[0];
   mates.innerHTML = list
     .map((e) => {
       const on = state.mate && state.mate.id === e.id ? " on" : "";
-      return `<button type="button" class="mate${on}" data-mate="${e.id}"><b>${e.name}</b><span>主 ${e.owner || "未記入"}</span></button>`;
+      const thumb = e.id === "sumi" ? `<img src="art/sumi/front.png" alt="">` : "";
+      return `<button type="button" class="mate${on}" data-mate="${e.id}">${thumb}<b>${e.name}</b><span>主 ${e.owner || "未記入"}</span></button>`;
     })
     .join("");
   const e = state.mate;
@@ -98,6 +99,11 @@ function bootArena() {
     constructor() {
       super("arena");
     }
+    preload() {
+      if (mate.id === "sumi") {
+        this.load.spritesheet("sumi", "art/sumi/sheet.png", { frameWidth: 160, frameHeight: 160 });
+      }
+    }
     create() {
       this.ended = false;
       this.hp = k.hp;
@@ -107,13 +113,27 @@ function bootArena() {
       this.next = 6;
       this.left = mode.secs;
       this.pace = mode.pace;
+      this.hasSprite = this.textures.exists("sumi");
       this.cameras.main.setBackgroundColor(stage.bg);
       const w = this.scale.width;
       const h = this.scale.height;
-      this.player = this.add.circle(w / 2, h / 2, 16, k.color);
-      this.physics.add.existing(this.player);
+      if (this.hasSprite) {
+        this.anims.create({
+          key: "sumi-run",
+          frames: this.anims.generateFrameNumbers("sumi", { start: 4, end: 7 }),
+          frameRate: 9,
+          repeat: -1,
+        });
+        this.player = this.physics.add.sprite(w / 2, h / 2, "sumi", 0);
+        this.player.setScale(0.52);
+        this.player.body.setCircle(36, 44, 70);
+        this.player.setDepth(5);
+      } else {
+        this.player = this.add.circle(w / 2, h / 2, 16, k.color);
+        this.physics.add.existing(this.player);
+        this.player.body.setCircle(16);
+      }
       this.player.body.setCollideWorldBounds(true);
-      this.player.body.setCircle(16);
       this.cursors = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT");
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
@@ -211,8 +231,23 @@ function bootArena() {
         }
       }
       const len = Math.hypot(vx, vy) || 1;
+      const moving = Math.hypot(vx, vy) > 0.01;
       const spd = k.speed * (1 + (this.lv - 1) * 0.06);
-      b.setVelocity((vx / len) * spd, (vy / len) * spd);
+      b.setVelocity(moving ? (vx / len) * spd : 0, moving ? (vy / len) * spd : 0);
+      if (this.hasSprite) {
+        if (moving && Math.abs(vx) >= Math.abs(vy)) {
+          this.player.setFlipX(vx < 0);
+          this.player.anims.play("sumi-run", true);
+        } else if (moving) {
+          this.player.anims.stop();
+          this.player.setFlipX(false);
+          this.player.setFrame(vy < 0 ? 3 : 0);
+        } else {
+          this.player.anims.stop();
+          this.player.setFrame(0);
+          this.player.setFlipX(false);
+        }
+      }
     }
     finish(win) {
       if (this.ended) return;
@@ -252,7 +287,7 @@ function bootArena() {
         if (!f || !f.body) return;
         this.physics.moveToObject(f, this.player, 70 + this.lv * 8);
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
-        if (d < 26 && this.hurtTick <= 0) {
+        if (d < 34 && this.hurtTick <= 0) {
           this.hp -= 4;
           this.hurtTick = 400;
           if (this.hp <= 0) this.finish(false);
@@ -285,7 +320,7 @@ function killGame() {
 async function main() {
   const res = await fetch("./data/entries.json");
   state.data = await res.json();
-  state.mate = (state.data.entries || [])[0];
+  state.mate = (state.data.entries || []).find((e) => e.id === "sumi") || (state.data.entries || [])[0];
   renderSetup();
 
   document.body.addEventListener("click", (ev) => {
