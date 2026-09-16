@@ -1,3 +1,4 @@
+const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
   mokopu: "art/mokopu/sheet.png",
@@ -26,7 +27,7 @@ function kit(e) {
       color: 0xf8b500,
       hp: 20,
       speed: 210,
-      rate: 320,
+      rate: 480,
       skill: "ネオンスパーク",
       kind: "spark",
       dmg: 8,
@@ -116,7 +117,7 @@ function bootArena() {
       this.maxHp = k.hp;
       this.lv = 1;
       this.xp = 0;
-      this.next = 6;
+      this.next = 4;
       this.left = mode.secs;
       this.pace = mode.pace;
       this.hasSprite = this.textures.exists("mate");
@@ -156,7 +157,7 @@ function bootArena() {
         this.xp += 1;
         if (this.xp >= this.next) {
           this.xp = 0;
-          this.next += 3;
+          this.next += 2;
           this.lv += 1;
           this.maxHp += 2;
           this.hp = Math.min(this.maxHp, this.hp + 4);
@@ -166,11 +167,12 @@ function bootArena() {
       this.spawnAcc = 0;
       this.shotAcc = 0;
       this.secAcc = 0;
+      this.sparks = [];
       this.paintHud();
     }
     paintHud() {
       hud.hp.textContent = `心 ${Math.max(0, Math.ceil(this.hp))}`;
-      hud.lv.textContent = `lv ${this.lv}`;
+      hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
@@ -192,20 +194,39 @@ function bootArena() {
     }
     flash(foe) {
       if (!foe.active) return;
-      foe.setFillStyle(0xfff4a3);
-      foe.body.velocity.scale(0.15);
-      this.time.delayedCall(120, () => {
+      foe.setFillStyle(NEON[Phaser.Math.Between(0, NEON.length - 1)]);
+      if (foe.body) foe.body.velocity.scale(0.2);
+      this.time.delayedCall(140, () => {
         if (foe.active) foe.setFillStyle(stage.foe);
+      });
+    }
+    pop(x, y, n) {
+      const t = this.add.text(x, y - 8, `${n}`, {
+        fontFamily: "sans-serif",
+        fontSize: "14px",
+        color: "#fff4a3",
+        stroke: "#1a1408",
+        strokeThickness: 3,
+      });
+      t.setOrigin(0.5);
+      t.setDepth(20);
+      this.tweens.add({
+        targets: t,
+        y: y - 34,
+        alpha: 0,
+        duration: 420,
+        onComplete: () => t.destroy(),
       });
     }
     hurtFoe(foe, dmg) {
       if (!foe.active) return;
       foe.hp -= dmg;
+      this.pop(foe.x, foe.y, dmg);
       if (foe.hp <= 0) {
-        if (Math.random() < 0.4) {
-          const gem = this.add.circle(foe.x, foe.y, 5, 0xf8b500);
+        if (Math.random() < 0.55) {
+          const gem = this.add.circle(foe.x, foe.y, 8, 0xf8b500);
           this.physics.add.existing(gem);
-          gem.body.setCircle(5);
+          gem.body.setCircle(8);
           this.gems.add(gem);
         }
         foe.destroy();
@@ -232,14 +253,47 @@ function bootArena() {
         return;
       }
       const target = this.closest();
-      if (!target) return;
-      const shot = this.add.circle(this.player.x, this.player.y, 7, k.color);
-      shot.setStrokeStyle(2, 0xfff4a3);
-      this.physics.add.existing(shot);
-      const ang = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
-      this.physics.velocityFromRotation(ang, 380, shot.body.velocity);
-      this.shots.add(shot);
-      this.time.delayedCall(650, () => shot.destroy());
+      const reach = 110 + this.lv * 8;
+      let x;
+      let y;
+      if (target) {
+        x = target.x;
+        y = target.y;
+      } else {
+        x = this.player.x + (this.face > 0 ? reach : -reach);
+        y = this.player.y;
+      }
+      const spark = this.add.circle(x, y, 22, NEON[0], 0.9);
+      spark.setStrokeStyle(3, 0xffffff, 0.8);
+      spark.setDepth(8);
+      spark.life = 1500;
+      spark.tick = 0;
+      spark.hue = 0;
+      this.sparks.push(spark);
+    }
+    tickSparks(delta) {
+      const r = 48 + this.lv * 4;
+      const dmg = this.skillDmg();
+      this.sparks = this.sparks.filter((s) => s.active);
+      for (const s of this.sparks) {
+        s.life -= delta;
+        s.tick += delta;
+        s.hue = (s.hue + delta * 0.012) % NEON.length;
+        s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
+        s.setScale(1 + 0.08 * Math.sin(s.life * 0.02));
+        if (s.tick >= 180) {
+          s.tick = 0;
+          this.foes.children.iterate((f) => {
+            if (!f || !f.active) return;
+            const d = Phaser.Math.Distance.Between(s.x, s.y, f.x, f.y);
+            if (d < r) {
+              this.hurtFoe(f, dmg);
+              this.flash(f);
+            }
+          });
+        }
+        if (s.life <= 0) s.destroy();
+      }
     }
     closest() {
       let best = null;
@@ -305,6 +359,7 @@ function bootArena() {
     update(_t, delta) {
       if (this.ended) return;
       this.move(delta);
+      if (k.kind === "spark") this.tickSparks(delta);
       this.secAcc += delta;
       if (this.secAcc >= 1000) {
         this.secAcc -= 1000;
