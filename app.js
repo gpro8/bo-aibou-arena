@@ -57,6 +57,7 @@ const state = {
 
 function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
+  document.body.classList.toggle("playing", name === "play" || name === "pause");
   if (name === "title" || name === "setup") paintRec();
 }
 
@@ -493,7 +494,13 @@ function bootArena() {
     height: 540,
     backgroundColor: stage.bg,
     physics: { default: "arcade" },
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    render: { antialias: true, roundPixels: true },
+    input: { activePointers: 3 },
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      expandParent: false,
+    },
     scene: [Arena],
   });
 }
@@ -511,6 +518,14 @@ async function main() {
   state.data = await res.json();
   state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
   renderSetup();
+
+  document.addEventListener(
+    "touchmove",
+    (ev) => {
+      if (document.body.classList.contains("playing")) ev.preventDefault();
+    },
+    { passive: false }
+  );
 
   document.body.addEventListener("click", (ev) => {
     const go = ev.target.closest("[data-go]");
