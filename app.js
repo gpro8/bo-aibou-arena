@@ -114,6 +114,7 @@ function bootArena() {
       this.left = mode.secs;
       this.pace = mode.pace;
       this.hasSprite = this.textures.exists("sumi");
+      this.face = 1;
       this.cameras.main.setBackgroundColor(stage.bg);
       const w = this.scale.width;
       const h = this.scale.height;
@@ -235,17 +236,14 @@ function bootArena() {
       const spd = k.speed * (1 + (this.lv - 1) * 0.06);
       b.setVelocity(moving ? (vx / len) * spd : 0, moving ? (vy / len) * spd : 0);
       if (this.hasSprite) {
-        if (moving && Math.abs(vx) >= Math.abs(vy)) {
-          this.player.setFlipX(vx < 0);
-          this.player.anims.play("sumi-run", true);
-        } else if (moving) {
+        // Run frames face LEFT. Flip when moving right.
+        if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
+        if (this.face == null) this.face = 1;
+        this.player.setFlipX(this.face > 0);
+        if (moving) this.player.anims.play("sumi-run", true);
+        else {
           this.player.anims.stop();
-          this.player.setFlipX(false);
-          this.player.setFrame(vy < 0 ? 3 : 0);
-        } else {
-          this.player.anims.stop();
-          this.player.setFrame(0);
-          this.player.setFlipX(false);
+          this.player.setFrame(this.face > 0 ? 2 : 1);
         }
       }
     }
