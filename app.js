@@ -1,4 +1,7 @@
-const ZUKAN = "https://gpro8.github.io/bo-aibou-zukan/";
+const SHEETS = {
+  sumi: "art/sumi/sheet.png",
+  mokopu: "art/mokopu/sheet.png",
+};
 
 const MODES = [
   { id: "easy", label: "ふつう", secs: 90, pace: 1 },
@@ -32,10 +35,11 @@ function kit(e) {
   return {
     color: 0xf3eadc,
     hp: 28,
-    speed: 170,
+    speed: 155,
     rate: 420,
     skill,
     kind: "puff",
+    bob: true,
   };
 }
 
@@ -65,11 +69,11 @@ function renderSetup() {
   ).join("");
   const mates = $("[data-mates]");
   const list = state.data.entries || [];
-  if (!state.mate) state.mate = list.find((e) => e.id === "sumi") || list[0];
+  if (!state.mate) state.mate = list.find((e) => e.id === "mokopu") || list[0];
   mates.innerHTML = list
     .map((e) => {
       const on = state.mate && state.mate.id === e.id ? " on" : "";
-      const thumb = e.id === "sumi" ? `<img src="art/sumi/front.png" alt="">` : "";
+      const thumb = SHEETS[e.id] ? `<img src="art/${e.id}/front.png" alt="">` : "";
       return `<button type="button" class="mate${on}" data-mate="${e.id}">${thumb}<b>${e.name}</b><span>主 ${e.owner || "未記入"}</span></button>`;
     })
     .join("");
@@ -100,9 +104,8 @@ function bootArena() {
       super("arena");
     }
     preload() {
-      if (mate.id === "sumi") {
-        this.load.spritesheet("sumi", "art/sumi/sheet.png", { frameWidth: 160, frameHeight: 160 });
-      }
+      const path = SHEETS[mate.id];
+      if (path) this.load.spritesheet("mate", path, { frameWidth: 160, frameHeight: 160 });
     }
     create() {
       this.ended = false;
@@ -113,21 +116,21 @@ function bootArena() {
       this.next = 6;
       this.left = mode.secs;
       this.pace = mode.pace;
-      this.hasSprite = this.textures.exists("sumi");
+      this.hasSprite = this.textures.exists("mate");
       this.face = 1;
       this.cameras.main.setBackgroundColor(stage.bg);
       const w = this.scale.width;
       const h = this.scale.height;
       if (this.hasSprite) {
         this.anims.create({
-          key: "sumi-run",
-          frames: this.anims.generateFrameNumbers("sumi", { start: 4, end: 7 }),
-          frameRate: 9,
+          key: "mate-run",
+          frames: this.anims.generateFrameNumbers("mate", { start: 4, end: 7 }),
+          frameRate: k.bob ? 6 : 9,
           repeat: -1,
         });
-        this.player = this.physics.add.sprite(w / 2, h / 2, "sumi", 0);
-        this.player.setScale(0.52);
-        this.player.body.setCircle(36, 44, 70);
+        this.player = this.physics.add.sprite(w / 2, h / 2, "mate", 0);
+        this.player.setScale(k.bob ? 0.58 : 0.52);
+        this.player.body.setCircle(k.bob ? 42 : 36, 40, k.bob ? 55 : 70);
         this.player.setDepth(5);
       } else {
         this.player = this.add.circle(w / 2, h / 2, 16, k.color);
@@ -240,7 +243,7 @@ function bootArena() {
         if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
         if (this.face == null) this.face = 1;
         this.player.setFlipX(this.face > 0);
-        if (moving) this.player.anims.play("sumi-run", true);
+        if (moving) this.player.anims.play("mate-run", true);
         else {
           this.player.anims.stop();
           this.player.setFrame(this.face > 0 ? 2 : 1);
@@ -318,7 +321,7 @@ function killGame() {
 async function main() {
   const res = await fetch("./data/entries.json");
   state.data = await res.json();
-  state.mate = (state.data.entries || []).find((e) => e.id === "sumi") || (state.data.entries || [])[0];
+  state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
   renderSetup();
 
   document.body.addEventListener("click", (ev) => {
