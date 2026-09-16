@@ -57,6 +57,33 @@ const state = {
 
 function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
+  if (name === "title" || name === "setup") paintRec();
+}
+
+function loadBest() {
+  try {
+    return JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function recKey(mateId, modeId) {
+  return `bo-aibou:${mateId}:${modeId}`;
+}
+
+function paintRec() {
+  const all = loadBest();
+  const nums = Object.values(all).map(Number).filter((n) => n > 0);
+  const own = $("[data-own-rec]");
+  if (own) own.textContent = nums.length ? `自分のベスト ${Math.max(...nums)}` : "自分の記録はまだない";
+  const setup = $("[data-setup-rec]");
+  if (setup && state.mate) {
+    const n = Number(all[recKey(state.mate.id, state.mode.id)] || 0);
+    setup.textContent = n
+      ? `${state.mate.name} · ${state.mode.label} ベスト ${n}`
+      : `${state.mate.name} · この難易度の記録はまだない`;
+  }
 }
 
 function renderSetup() {
@@ -205,9 +232,9 @@ function bootArena() {
       const foe = this.add.circle(x, y, r, stage.foe);
       this.physics.add.existing(foe);
       foe.body.setCircle(r);
-      foe.hp = boss ? 70 + this.lv * 4 : 20 + (this.lv - 1) * 2;
+      foe.hp = boss ? 110 + this.lv * 6 : 20 + (this.lv - 1) * 2;
       foe.boss = boss;
-      foe.spd = boss ? 42 : 70 + this.lv * 8;
+      foe.spd = boss ? 58 : 70 + this.lv * 8;
       if (boss) foe.setStrokeStyle(3, 0xf8b500, 1);
       this.foes.add(foe);
     }
@@ -291,7 +318,6 @@ function bootArena() {
           const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
           if (d < r) this.hurtFoe(f, this.skillDmg());
         });
-        this.hp = Math.min(this.maxHp, this.hp + 1.2);
         return;
       }
       const dir = this.face > 0 ? 1 : -1;
@@ -403,10 +429,11 @@ function bootArena() {
       }
       state.last = { win, name: mate.name, lv: this.lv, score };
       killGame();
-      $("[data-result-title]").textContent = win ? "生きた" : "たおれた";
-      $("[data-thanks]").textContent = "ありがとうございます";
+      $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
+      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど旗を";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
+      paintRec();
       show("result");
     }
     update(_t, delta) {
@@ -449,7 +476,7 @@ function bootArena() {
         const reach = f.boss ? 44 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
         if (d < reach && this.hurtTick <= 0) {
-          this.hp -= f.boss ? 4 : 2;
+          this.hp -= f.boss ? 5 : 2;
           this.hurtTick = 650;
           if (this.hp <= 0) this.finish(false);
         }
