@@ -28,10 +28,10 @@ function kit(e) {
       color: 0xf8b500,
       hp: 32,
       speed: 210,
-      rate: 640,
+      rate: 520,
       skill: "ネオンスパーク",
       kind: "spark",
-      dmg: 5,
+      dmg: 6,
     };
   }
   return {
@@ -100,6 +100,7 @@ function bootArena() {
     time: $("[data-hud-time]"),
     hp: $("[data-hud-hp]"),
     hpbar: $("[data-hud-hpbar]"),
+    combo: $("[data-hud-combo]"),
     lv: $("[data-hud-lv]"),
   };
   hud.name.textContent = mate.name;
@@ -169,7 +170,15 @@ function bootArena() {
       this.spawnAcc = 0;
       this.shotAcc = 0;
       this.secAcc = 0;
+      this.waveAcc = 0;
+      this.paceHold = 0;
       this.sparks = [];
+      this.kills = 0;
+      this.dry = 0;
+      this.combo = 0;
+      this.maxCombo = 0;
+      this.lastKill = 0;
+      this.bossDone = false;
       this.paintHud();
     }
     paintHud() {
@@ -177,6 +186,7 @@ function bootArena() {
       hud.hp.textContent = `心 ${now}/${this.maxHp}`;
       if (hud.hpbar) hud.hpbar.style.width = `${Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100))}%`;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
+      hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
@@ -184,17 +194,29 @@ function bootArena() {
     skillDmg() {
       return k.dmg + (this.lv - 1) * 2;
     }
-    spawn() {
+    spawn(kind) {
       const w = this.scale.width;
       const h = this.scale.height;
       const edge = Phaser.Math.Between(0, 3);
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
-      const foe = this.add.circle(x, y, 12, stage.foe);
+      const boss = kind === "boss";
+      const r = boss ? 22 : 12;
+      const foe = this.add.circle(x, y, r, stage.foe);
       this.physics.add.existing(foe);
-      foe.body.setCircle(12);
-      foe.hp = 20 + (this.lv - 1) * 2;
+      foe.body.setCircle(r);
+      foe.hp = boss ? 70 + this.lv * 4 : 20 + (this.lv - 1) * 2;
+      foe.boss = boss;
+      foe.spd = boss ? 42 : 70 + this.lv * 8;
+      if (boss) foe.setStrokeStyle(3, 0xf8b500, 1);
       this.foes.add(foe);
+    }
+    dropGem(x, y) {
+      const gem = this.add.circle(x, y, 8, XP_COLOR);
+      this.physics.add.existing(gem);
+      gem.body.setCircle(8);
+      gem.setStrokeStyle(2, 0xffffff, 0.95);
+      this.gems.add(gem);
     }
     flash(foe) {
       if (!foe.active) return;
@@ -227,14 +249,29 @@ function bootArena() {
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg);
       if (foe.hp <= 0) {
-        if (Math.random() < 0.55) {
-          const gem = this.add.circle(foe.x, foe.y, 8, XP_COLOR);
-          this.physics.add.existing(gem);
-          gem.body.setCircle(8);
-          gem.setStrokeStyle(2, 0xffffff, 0.95);
-          this.gems.add(gem);
-        }
+        const boss = foe.boss;
+        const x = foe.x;
+        const y = foe.y;
         foe.destroy();
+        this.kills += 1;
+        const now = this.time.now;
+        this.combo = now - this.lastKill < 1600 ? this.combo + 1 : 1;
+        this.lastKill = now;
+        if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+        const pity = this.dry >= 2;
+        if (Math.random() < 0.7 || pity || boss) {
+          this.dropGem(x, y);
+          this.dry = 0;
+        } else {
+          this.dry += 1;
+        }
+        if (this.combo >= 4) this.dropGem(x + 10, y - 8);
+        if (boss) {
+          this.dropGem(x - 12, y);
+          this.dropGem(x + 12, y);
+          this.hp = Math.min(this.maxHp, this.hp + 6);
+          this.pop(x, y - 18, "親玉");
+        }
       }
     }
     fire() {
@@ -257,29 +294,32 @@ function bootArena() {
         this.hp = Math.min(this.maxHp, this.hp + 1.2);
         return;
       }
-      const reach = 72;
       const dir = this.face > 0 ? 1 : -1;
-      const x = this.player.x + dir * reach;
-      const y = this.player.y + Phaser.Math.Between(-18, 18);
-      const spark = this.add.circle(x, y, 16, NEON[0], 0.85);
+      const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 12, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
-      spark.life = 820;
+      spark.vx = dir * 0.32;
+      spark.travel = 260;
+      spark.life = 1100;
       spark.tick = 0;
       spark.hue = 0;
       this.sparks.push(spark);
     }
     tickSparks(delta) {
-      const r = 30 + this.lv * 2;
+      const r = 36 + this.lv * 2;
       const dmg = this.skillDmg();
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
         s.life -= delta;
         s.tick += delta;
+        if (s.travel > 0) {
+          s.travel -= delta;
+          s.x += s.vx * delta;
+        }
         s.hue = (s.hue + delta * 0.012) % NEON.length;
         s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
-        s.setScale(1 + 0.08 * Math.sin(s.life * 0.02));
-        if (s.tick >= 300) {
+        s.setScale(s.travel > 0 ? 0.85 : 1.15 + 0.08 * Math.sin(s.life * 0.02));
+        if (s.tick >= 240) {
           s.tick = 0;
           this.foes.children.iterate((f) => {
             if (!f || !f.active) return;
@@ -343,15 +383,30 @@ function bootArena() {
     finish(win) {
       if (this.ended) return;
       this.ended = true;
-      state.last = {
-        win,
-        name: mate.name,
-        lv: this.lv,
-      };
+      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0);
+      const key = `bo-aibou:${mate.id}:${mode.id}`;
+      let best = 0;
+      try {
+        best = Number(JSON.parse(localStorage.getItem("bo-aibou-best") || "{}")[key] || 0);
+      } catch {
+        best = 0;
+      }
+      const rec = score > best;
+      if (rec) {
+        try {
+          const all = JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
+          all[key] = score;
+          localStorage.setItem("bo-aibou-best", JSON.stringify(all));
+        } catch {
+          /* guest device */
+        }
+      }
+      state.last = { win, name: mate.name, lv: this.lv, score };
       killGame();
       $("[data-result-title]").textContent = win ? "生きた" : "たおれた";
       $("[data-thanks]").textContent = "ありがとうございます";
-      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv}`;
+      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
+      $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       show("result");
     }
     update(_t, delta) {
@@ -362,6 +417,19 @@ function bootArena() {
       if (this.secAcc >= 1000) {
         this.secAcc -= 1000;
         this.left -= 1;
+        this.waveAcc += 1;
+        if (this.paceHold > 0) this.paceHold -= 1;
+        this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1);
+        if (this.waveAcc >= 22) {
+          this.waveAcc = 0;
+          this.paceHold = 3;
+          for (let i = 0; i < 4; i += 1) this.spawn();
+        }
+        if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
+          this.bossDone = true;
+          this.spawn("boss");
+        }
+        if (this.time.now - this.lastKill > 1600) this.combo = 0;
         if (this.left <= 0) this.finish(true);
       }
       this.spawnAcc += delta * this.pace;
@@ -377,10 +445,11 @@ function bootArena() {
       this.hurtTick -= delta;
       this.foes.children.iterate((f) => {
         if (!f || !f.body) return;
-        this.physics.moveToObject(f, this.player, 70 + this.lv * 8);
+        this.physics.moveToObject(f, this.player, f.spd || 70);
+        const reach = f.boss ? 44 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
-        if (d < 34 && this.hurtTick <= 0) {
-          this.hp -= 2;
+        if (d < reach && this.hurtTick <= 0) {
+          this.hp -= f.boss ? 4 : 2;
           this.hurtTick = 650;
           if (this.hp <= 0) this.finish(false);
         }
