@@ -70,5 +70,6 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   background: #0c0b0a;
   font-size: 13px;
 }
+#hud [data-hud-skill] { color: var(--gold); }
 #arena { width: 100%; height: min(70vh, 540px); background: #000; }
 #arena canvas { display: block; }

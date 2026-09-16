@@ -21,25 +21,26 @@ function field(e, key) {
 }
 
 function kit(e) {
-  const skill = field(e, "特技") || "そばにいる";
   if (e.id === "sumi") {
     return {
       color: 0xf8b500,
       hp: 20,
       speed: 210,
-      rate: 280,
-      skill,
+      rate: 320,
+      skill: "ネオンスパーク",
       kind: "spark",
+      dmg: 8,
     };
   }
   return {
     color: 0xf3eadc,
     hp: 28,
     speed: 155,
-    rate: 420,
-    skill,
+    rate: 520,
+    skill: field(e, "特技") || "ふわふわで癒す",
     kind: "puff",
     bob: true,
+    dmg: 6,
   };
 }
 
@@ -93,11 +94,13 @@ function bootArena() {
   const stage = state.stage;
   const hud = {
     name: $("[data-hud-name]"),
+    skill: $("[data-hud-skill]"),
     time: $("[data-hud-time]"),
     hp: $("[data-hud-hp]"),
     lv: $("[data-hud-lv]"),
   };
   hud.name.textContent = mate.name;
+  hud.skill.textContent = k.skill;
 
   class Arena extends Phaser.Scene {
     constructor() {
@@ -143,8 +146,10 @@ function bootArena() {
       this.shots = this.physics.add.group();
       this.gems = this.physics.add.group();
       this.physics.add.overlap(this.shots, this.foes, (shot, foe) => {
+        if (!shot.active || !foe.active) return;
         shot.destroy();
-        this.hurtFoe(foe, k.kind === "spark" ? 18 : 12);
+        this.hurtFoe(foe, this.skillDmg());
+        if (k.kind === "spark") this.flash(foe);
       });
       this.physics.add.overlap(this.player, this.gems, (_p, gem) => {
         gem.destroy();
@@ -166,8 +171,12 @@ function bootArena() {
     paintHud() {
       hud.hp.textContent = `心 ${Math.max(0, Math.ceil(this.hp))}`;
       hud.lv.textContent = `lv ${this.lv}`;
+      hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
+    }
+    skillDmg() {
+      return k.dmg + (this.lv - 1) * 3;
     }
     spawn() {
       const w = this.scale.width;
@@ -178,30 +187,59 @@ function bootArena() {
       const foe = this.add.circle(x, y, 12, stage.foe);
       this.physics.add.existing(foe);
       foe.body.setCircle(12);
-      foe.hp = 12 + this.lv * 2;
+      foe.hp = 20;
       this.foes.add(foe);
     }
+    flash(foe) {
+      if (!foe.active) return;
+      foe.setFillStyle(0xfff4a3);
+      foe.body.velocity.scale(0.15);
+      this.time.delayedCall(120, () => {
+        if (foe.active) foe.setFillStyle(stage.foe);
+      });
+    }
     hurtFoe(foe, dmg) {
+      if (!foe.active) return;
       foe.hp -= dmg;
-      if (k.kind === "spark") foe.body.velocity.scale(0.2);
       if (foe.hp <= 0) {
-        const gem = this.add.circle(foe.x, foe.y, 5, 0xf8b500);
-        this.physics.add.existing(gem);
-        gem.body.setCircle(5);
-        this.gems.add(gem);
+        if (Math.random() < 0.4) {
+          const gem = this.add.circle(foe.x, foe.y, 5, 0xf8b500);
+          this.physics.add.existing(gem);
+          gem.body.setCircle(5);
+          this.gems.add(gem);
+        }
         foe.destroy();
       }
     }
     fire() {
+      if (k.kind === "puff") {
+        const r = 70 + this.lv * 6;
+        const ring = this.add.circle(this.player.x, this.player.y, 18, k.color, 0.35);
+        ring.setStrokeStyle(3, 0xf8b500, 0.9);
+        this.tweens.add({
+          targets: ring,
+          scale: 2.4,
+          alpha: 0,
+          duration: 280,
+          onComplete: () => ring.destroy(),
+        });
+        this.foes.children.iterate((f) => {
+          if (!f || !f.active) return;
+          const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
+          if (d < r) this.hurtFoe(f, this.skillDmg());
+        });
+        this.hp = Math.min(this.maxHp, this.hp + 1.2);
+        return;
+      }
       const target = this.closest();
       if (!target) return;
-      const shot = this.add.circle(this.player.x, this.player.y, k.kind === "puff" ? 10 : 5, k.color);
+      const shot = this.add.circle(this.player.x, this.player.y, 7, k.color);
+      shot.setStrokeStyle(2, 0xfff4a3);
       this.physics.add.existing(shot);
       const ang = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
-      this.physics.velocityFromRotation(ang, 320, shot.body.velocity);
+      this.physics.velocityFromRotation(ang, 380, shot.body.velocity);
       this.shots.add(shot);
-      this.time.delayedCall(700, () => shot.destroy());
-      if (k.kind === "puff") this.hp = Math.min(this.maxHp, this.hp + 0.6);
+      this.time.delayedCall(650, () => shot.destroy());
     }
     closest() {
       let best = null;
