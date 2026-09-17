@@ -333,6 +333,7 @@ function bootArena() {
           this.next += 2;
           this.lv += 1;
           this.maxHp += 2;
+          this.healWhy = "lv";
           this.hp = Math.min(this.maxHp, this.hp + 4);
         }
       });
@@ -350,6 +351,7 @@ function bootArena() {
       this.lastKill = 0;
       this.bossDone = false;
       this.prevHp = this.hp;
+      this.healWhy = "";
       this.paintHud();
     }
     pulseHp(kind, amt) {
@@ -369,12 +371,16 @@ function bootArena() {
         }, 320);
       }
       if (this.player) {
-        const n = kind === "heal" ? `+${Math.ceil(amt)}` : `-${Math.ceil(amt)}`;
-        this.pop(this.player.x, this.player.y - 24, n);
+        const n =
+          kind === "heal"
+            ? `${this.healWhy || "心"} +${Math.ceil(amt)}`
+            : `-${Math.ceil(amt)}`;
+        this.pop(this.player.x, this.player.y - 24, n, kind === "heal" ? "#7ecfff" : "#ff8a8a");
         if (this.hasSprite) {
-          this.player.setTint(kind === "heal" ? 0xf8b500 : 0xff4a4a);
+          this.player.setTint(kind === "heal" ? 0x7ecfff : 0xff4a4a);
           this.time.delayedCall(180, () => this.player.clearTint());
         }
+        this.healWhy = "";
       }
     }
     paintHud() {
@@ -427,11 +433,11 @@ function bootArena() {
         if (foe.active) foe.setFillStyle(stage.foe);
       });
     }
-    pop(x, y, n) {
+    pop(x, y, n, color) {
       const t = this.add.text(x, y - 8, `${n}`, {
         fontFamily: "sans-serif",
         fontSize: "14px",
-        color: "#fff4a3",
+        color: color || "#fff4a3",
         stroke: "#1a1408",
         strokeThickness: 3,
       });
@@ -470,6 +476,7 @@ function bootArena() {
         if (boss) {
           this.dropGem(x - 12, y);
           this.dropGem(x + 12, y);
+          this.healWhy = "親玉";
           this.hp = Math.min(this.maxHp, this.hp + 6);
           this.pop(x, y - 18, "親玉");
         }
@@ -511,24 +518,36 @@ function bootArena() {
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
         s.life -= delta;
-        s.tick += delta;
+        s.hue = (s.hue + delta * 0.012) % NEON.length;
+        s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
         if (s.travel > 0) {
           s.travel -= delta;
           s.x += s.vx * delta;
-        }
-        s.hue = (s.hue + delta * 0.012) % NEON.length;
-        s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
-        s.setScale(s.travel > 0 ? 0.85 : 1.15 + 0.08 * Math.sin(s.life * 0.02));
-        if (s.tick >= 240) {
-          s.tick = 0;
+          s.setScale(0.85);
           this.foes.children.iterate((f) => {
-            if (!f || !f.active) return;
+            if (!f || !f.active || s.travel <= 0) return;
+            const hit = 20 + (f.boss ? 12 : 0);
             const d = Phaser.Math.Distance.Between(s.x, s.y, f.x, f.y);
-            if (d < r) {
-              this.hurtFoe(f, dmg);
-              this.flash(f);
+            if (d < hit) {
+              s.travel = 0;
+              s.x = f.x;
+              s.y = f.y;
             }
           });
+        } else {
+          s.tick += delta;
+          s.setScale(1.15 + 0.08 * Math.sin(s.life * 0.02));
+          if (s.tick >= 240) {
+            s.tick = 0;
+            this.foes.children.iterate((f) => {
+              if (!f || !f.active) return;
+              const d = Phaser.Math.Distance.Between(s.x, s.y, f.x, f.y);
+              if (d < r) {
+                this.hurtFoe(f, dmg);
+                this.flash(f);
+              }
+            });
+          }
         }
         if (s.life <= 0) s.destroy();
       }
