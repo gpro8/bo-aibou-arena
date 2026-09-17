@@ -31,11 +31,20 @@ html:-webkit-full-screen .play * {
 }
 html:fullscreen #pause-ov,
 html:fullscreen #pause-ov *,
+html:fullscreen #result-ov,
+html:fullscreen #result-ov *,
+html:fullscreen #raise-ov,
+html:fullscreen #raise-ov *,
 html:-webkit-full-screen #pause-ov,
-html:-webkit-full-screen #pause-ov * {
+html:-webkit-full-screen #pause-ov *,
+html:-webkit-full-screen #result-ov,
+html:-webkit-full-screen #result-ov *,
+html:-webkit-full-screen #raise-ov,
+html:-webkit-full-screen #raise-ov * {
   cursor: auto;
 }
-#pause-ov {
+#pause-ov,
+#result-ov {
   position: absolute;
   inset: 0;
   z-index: 8;
@@ -43,12 +52,36 @@ html:-webkit-full-screen #pause-ov * {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   background: rgba(12, 11, 10, 0.58);
   pointer-events: auto;
+  overflow: auto;
+  padding: 16px;
 }
-#pause-ov.hidden { display: none !important; }
-#pause-ov h1 { color: var(--gold); }
+#pause-ov.hidden, #result-ov.hidden { display: none !important; }
+#pause-ov h1, #result-ov h1 { color: var(--gold); }
+#result-ov .col { width: min(360px, 100%); }
+#result-ov .flag-card { max-width: 180px; max-height: 28vh; }
+#bosshp {
+  position: absolute;
+  right: calc(12px + var(--safe-r));
+  bottom: calc(12px + var(--safe-b));
+  z-index: 5;
+  min-width: 148px;
+  padding: 8px 10px;
+  background: rgba(18, 16, 14, 0.72);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--gold);
+}
+#bosshp.hidden { display: none !important; }
+#bosshp .hpbar { width: 100%; flex: 1 1 auto; }
+.hpbar.boss i { background: linear-gradient(90deg, #c94a4a, #f8b500); }
 body.playing {
   overflow: hidden;
   height: 100dvh;

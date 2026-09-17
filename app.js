@@ -61,6 +61,12 @@ function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
   document.body.classList.toggle("playing", name === "play");
   if (name === "title" || name === "setup") paintRec();
+  if (name === "play") {
+    ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
+      const el = $(s);
+      if (el) el.classList.add("hidden");
+    });
+  }
   if (name !== "play") {
     state.pendingPlay = false;
     clearStick();
@@ -68,15 +74,15 @@ function show(name) {
     const rotate = $("#rotate");
     const stick = $("#stick");
     const ov = $("#pause-ov");
+    const result = $("#result-ov");
+    const raise = $("#raise-ov");
+    const boss = $("#bosshp");
     if (rotate) rotate.classList.add("hidden");
     if (stick) stick.classList.add("hidden");
     if (ov) ov.classList.add("hidden");
-  }
-  if (name !== "result") {
-    const card = $("[data-flag-card]");
-    const ov = $("#raise-ov");
-    if (card) card.classList.add("hidden");
-    if (ov) ov.classList.add("hidden");
+    if (result) result.classList.add("hidden");
+    if (raise) raise.classList.add("hidden");
+    if (boss) boss.classList.add("hidden");
   }
 }
 
@@ -518,6 +524,7 @@ function bootArena() {
       this.maxCombo = 0;
       this.lastKill = 0;
       this.bossDone = false;
+      this.bossDown = 0;
       this.prevHp = this.hp;
       this.healWhy = "";
       this.paintHud();
@@ -642,7 +649,8 @@ function bootArena() {
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
-      foe.hp = boss ? 170 + this.lv * 10 : 20 + (this.lv - 1) * 2;
+      foe.hp = boss ? 280 + this.lv * 16 : 20 + (this.lv - 1) * 2;
+      foe.maxHp = foe.hp;
       foe.boss = boss;
       foe.spd = boss ? 80 : 70 + this.lv * 8;
       this.tweens.add({
@@ -717,11 +725,18 @@ function bootArena() {
         }
         if (this.combo >= 4) this.dropGem(x + 10, y - 8);
         if (boss) {
-          this.dropGem(x - 12, y);
-          this.dropGem(x + 12, y);
+          this.bossDown += 1;
+          this.dropGem(x - 16, y);
+          this.dropGem(x + 16, y);
+          this.dropGem(x, y - 16);
+          this.dropGem(x, y + 12);
           this.healWhy = "親玉";
-          this.hp = Math.min(this.maxHp, this.hp + 6);
-          this.pop(x, y - 18, "親玉");
+          this.maxHp += 2;
+          this.hp = Math.min(this.maxHp, this.hp + 10);
+          this.callout("旗");
+          this.pop(x, y - 18, "親玉 +10");
+          const bar = $("#bosshp");
+          if (bar) bar.classList.add("hidden");
         }
       }
     }
@@ -838,7 +853,7 @@ function bootArena() {
     finish(win) {
       if (this.ended) return;
       this.ended = true;
-      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0);
+      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 40;
       const key = `bo-aibou:${mate.id}:${mode.id}`;
       let best = 0;
       try {
@@ -866,14 +881,17 @@ function bootArena() {
         combo: this.maxCombo,
         rec,
       };
-      killGame();
+      if (state.game) state.game.scene.pause("arena");
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど旗を";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       paintRec();
       paintFlagCard(state.last);
-      show("result");
+      const pause = $("#pause-ov");
+      const result = $("#result-ov");
+      if (pause) pause.classList.add("hidden");
+      if (result) result.classList.remove("hidden");
     }
     update(_t, delta) {
       if (this.ended) return;
@@ -923,6 +941,16 @@ function bootArena() {
           if (this.hp <= 0) this.finish(false);
         }
       });
+      let boss = null;
+      this.foes.children.iterate((f) => {
+        if (f && f.boss) boss = f;
+      });
+      const bar = $("#bosshp");
+      const fill = $("[data-boss-hpbar]");
+      if (bar) {
+        bar.classList.toggle("hidden", !boss);
+        if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
+      }
       this.paintHud();
     }
   }
@@ -949,6 +977,8 @@ function pausePlay() {
   const play = $("[data-screen='play']");
   if (!play || play.classList.contains("hidden")) return;
   if ($("#rotate") && !$("#rotate").classList.contains("hidden")) return;
+  if ($("#result-ov") && !$("#result-ov").classList.contains("hidden")) return;
+  if ($("#raise-ov") && !$("#raise-ov").classList.contains("hidden")) return;
   const ov = $("#pause-ov");
   if (ov && !ov.classList.contains("hidden")) return;
   if (state.game) state.game.scene.pause("arena");
@@ -999,6 +1029,8 @@ async function main() {
     ev.preventDefault();
     const play = $("[data-screen='play']");
     const ov = $("#pause-ov");
+    if ($("#result-ov") && !$("#result-ov").classList.contains("hidden")) return;
+    if ($("#raise-ov") && !$("#raise-ov").classList.contains("hidden")) return;
     if (ov && !ov.classList.contains("hidden")) resumePlay();
     else if (play && !play.classList.contains("hidden")) pausePlay();
   });
@@ -1006,6 +1038,7 @@ async function main() {
   document.body.addEventListener("click", (ev) => {
     const go = ev.target.closest("[data-go]");
     if (go) {
+      killGame();
       if (go.dataset.go === "setup") renderSetup();
       show(go.dataset.go);
       return;
