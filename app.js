@@ -1,4 +1,4 @@
-const VERSION = "0.4.7";
+const VERSION = "0.4.8";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -582,6 +582,7 @@ function bootArena() {
       this.fastUntil = 0;
       this.chestAcc = 0;
       this.chestsOpened = 0;
+      this.lastBuff = null;
       this.buffMax = 22000;
       this.wardPending = false;
       this.ward = null;
@@ -788,7 +789,12 @@ function bootArena() {
       this.chestsOpened += 1;
       const dur = 22000;
       this.buffMax = dur;
-      if (Math.random() < 0.5) {
+      let pull;
+      if (this.lastBuff === "hayate") pull = true;
+      else if (this.lastBuff === "pull") pull = false;
+      else pull = Math.random() < 0.58;
+      this.lastBuff = pull ? "pull" : "hayate";
+      if (pull) {
         this.pullUntil = this.time.now + dur;
         this.fastUntil = 0;
         this.callout("旗吸い");
