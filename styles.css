@@ -23,6 +23,12 @@ html, body {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
 }
+html:fullscreen .play,
+html:fullscreen .play *,
+html:-webkit-full-screen .play,
+html:-webkit-full-screen .play * {
+  cursor: none;
+}
 body.playing {
   overflow: hidden;
   height: 100dvh;
