@@ -316,32 +316,41 @@ async function paintFlagCard(run) {
   }
 }
 
-async function raiseFlag() {
-  const run = state.last;
-  if (!run) return;
-  if (!state.card) await paintFlagCard(run);
-  const text = raiseText(run);
-  const blob = await new Promise((res) => state.card.toBlob(res, "image/png"));
-  if (!blob) return;
-  const file = new File([blob], "kakageru.png", { type: "image/png" });
-  try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], text, title: "相棒あそび" });
-      return;
-    }
-    if (navigator.share) {
-      await navigator.share({ text, url: PLAY_URL, title: "相棒あそび" });
-      return;
-    }
-  } catch (err) {
-    if (err && err.name === "AbortError") return;
-  }
+function clickA(href, download) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "kakageru.png";
+  a.href = href;
+  a.rel = "noopener";
+  if (download) a.download = download;
+  else a.target = "_blank";
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  a.remove();
+}
+
+function raiseFlag() {
+  const run = state.last;
+  if (!run || !state.card) return;
+  const text = raiseText(run);
+  const dataUrl = state.card.toDataURL("image/png");
+  const bin = atob(dataUrl.split(",")[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  const file = new File([bytes], "kakageru.png", { type: "image/png" });
+  const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  if (isCoarse() && navigator.share) {
+    const payload =
+      navigator.canShare && navigator.canShare({ files: [file] })
+        ? { files: [file], text, title: "相棒あそび" }
+        : { text, url: PLAY_URL, title: "相棒あそび" };
+    navigator.share(payload).catch((err) => {
+      if (err && err.name === "AbortError") return;
+      clickA(dataUrl, "kakageru.png");
+      clickA(tweet);
+    });
+    return;
+  }
+  clickA(dataUrl, "kakageru.png");
+  clickA(tweet);
 }
 
 function renderSetup() {
