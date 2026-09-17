@@ -1,4 +1,4 @@
-const VERSION = "0.4.10";
+const VERSION = "0.4.11";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -361,7 +361,7 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
-  ctx.fillText("旗を掲げる", 540, 1230);
+  ctx.fillText("𝕏でドヤる", 540, 1230);
   ctx.fillStyle = "#3a342c";
   ctx.fillRect(980, 80, 8, 64);
   ctx.fillStyle = "#f8b500";
@@ -399,7 +399,7 @@ function cardPack() {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
   const blob = new Blob([bytes], { type: "image/png" });
-  const file = new File([bytes], "kakageru.png", { type: "image/png" });
+  const file = new File([bytes], "doyaru.png", { type: "image/png" });
   return {
     text,
     dataUrl,
@@ -445,14 +445,14 @@ function raiseCopy() {
   }
   navigator.clipboard
     .write([new ClipboardItem({ "image/png": pack.blob })])
-    .then(() => raiseMsg("コピーした。Xに貼る"))
+    .then(() => raiseMsg("コピーした。𝕏に貼る"))
     .catch(() => raiseMsg("コピーできない。保存して添付"));
 }
 
 function raiseSave() {
   const pack = cardPack();
   if (!pack) return;
-  clickA(pack.dataUrl, "kakageru.png");
+  clickA(pack.dataUrl, "doyaru.png");
   raiseMsg("保存した");
 }
 
@@ -654,7 +654,7 @@ function bootArena() {
       const leftF = this.fastUntil - tnow;
       const leftW = this.wardUntil - tnow;
       const bits = [
-        { k: "pull", t: leftP, n: "旗吸い" },
+        { k: "pull", t: leftP, n: "吸い込み" },
         { k: "fast", t: leftF, n: "はやて" },
         { k: "ward", t: leftW, n: "守" },
       ].filter((b) => b.t > 0);
@@ -816,7 +816,7 @@ function bootArena() {
         const dur = 22000;
         this.buffMax = dur;
         this.pullUntil = this.time.now + dur;
-        this.callout("旗吸い");
+        this.callout("吸い込み");
       } else if (pick === "hayate") {
         const dur = 22000;
         this.buffMax = dur;
@@ -1125,7 +1125,7 @@ function bootArena() {
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
-      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど旗を";
+      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど走る";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       paintRec();
