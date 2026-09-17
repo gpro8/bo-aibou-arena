@@ -1,4 +1,4 @@
-const VERSION = "0.4.6";
+const VERSION = "0.4.7";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -14,6 +14,13 @@ const STAGES = [
   { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
 ];
 const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
+function buzz(pat) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pat);
+  } catch {
+    /* no hap */
+  }
+}
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -608,6 +615,7 @@ function bootArena() {
           this.player.setTint(kind === "heal" ? 0x7ecfff : 0xff4a4a);
           this.time.delayedCall(180, () => this.player.clearTint());
           if (kind === "dmg" && this.cameras && this.cameras.main) this.cameras.main.shake(110, 0.008);
+          if (kind === "dmg") buzz(45);
         }
         this.healWhy = "";
       }
@@ -800,6 +808,7 @@ function bootArena() {
       }
       const fx = $("#fx");
       if (fx) fx.className = "stop";
+      buzz([40, 50, 40, 50, 140]);
     }
     endHitStop() {
       if (this.physics && this.physics.world) this.physics.world.resume();
@@ -1092,8 +1101,15 @@ function bootArena() {
         this.left -= 1;
         this.waveAcc += 1;
         if (this.paceHold > 0) this.paceHold -= 1;
-        this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1);
-        if (this.waveAcc === 20) this.callout("来るぞ");
+        this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1) * (this.left <= 15 ? 1.5 : 1);
+        if (this.left === 15) {
+          this.callout("終盤");
+          buzz([20, 30, 20, 30, 40]);
+        }
+        if (this.waveAcc === 20) {
+          this.callout("来るぞ");
+          buzz([18, 24, 18]);
+        }
         if (this.waveAcc >= 22) {
           this.waveAcc = 0;
           this.paceHold = 3;
@@ -1104,6 +1120,7 @@ function bootArena() {
           this.spawn("boss");
           this.callout("影の親玉");
           this.cameras.main.shake(220, 0.012);
+          buzz([30, 40, 90]);
         }
         if (this.time.now - this.lastKill > 1600) this.combo = 0;
         if (this.left <= 0) this.finish(true);
@@ -1114,7 +1131,7 @@ function bootArena() {
         this.spawnChest();
       }
       this.spawnAcc += delta * this.pace;
-      if (this.spawnAcc > Math.max(420, 900 - this.lv * 40)) {
+      if (this.spawnAcc > Math.max(280, (this.left <= 15 ? 620 : 900) - this.lv * 40)) {
         this.spawnAcc = 0;
         this.spawn();
       }
