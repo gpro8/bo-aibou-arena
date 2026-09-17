@@ -1,4 +1,4 @@
-const VERSION = "0.4.15";
+const VERSION = "0.4.16";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -382,7 +382,7 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
-  ctx.fillText("栄誉を讃える", 540, 1230);
+  ctx.fillText("希望に向かって駆け抜ける", 540, 1230);
   ctx.fillStyle = "#3a342c";
   ctx.fillRect(980, 80, 8, 64);
   ctx.fillStyle = "#f8b500";
@@ -1241,6 +1241,8 @@ function bootArena() {
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど";
+      const raiseBtn = $("[data-raise]");
+      if (raiseBtn) raiseBtn.textContent = win ? "𝕏でドヤる" : "𝕏でシェアする";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       paintRec();
