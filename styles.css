@@ -225,7 +225,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 }
 #hud .btn { pointer-events: auto; }
 #hud [data-hud-skill],
-#hud [data-hud-combo] { color: var(--gold); }
+#hud [data-hud-combo],
+#hud [data-hud-buff] { color: var(--gold); }
 .hpbar {
   width: 92px;
   height: 12px;

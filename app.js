@@ -1,4 +1,4 @@
-const VERSION = "0.4.3";
+const VERSION = "0.4.4";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -485,6 +485,7 @@ function bootArena() {
     hpbar: $("[data-hud-hpbar]"),
     combo: $("[data-hud-combo]"),
     lv: $("[data-hud-lv]"),
+    buff: $("[data-hud-buff]"),
   };
   hud.name.textContent = mate.name;
   hud.skill.textContent = k.skill;
@@ -533,6 +534,7 @@ function bootArena() {
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
       this.gems = this.physics.add.group();
+      this.chests = this.physics.add.group();
       this.physics.add.overlap(this.shots, this.foes, (shot, foe) => {
         if (!shot.active || !foe.active) return;
         shot.destroy();
@@ -551,6 +553,9 @@ function bootArena() {
           this.hp = Math.min(this.maxHp, this.hp + 4);
         }
       });
+      this.physics.add.overlap(this.player, this.chests, (_p, box) => {
+        this.openChest(box);
+      });
       this.hurtTick = 0;
       this.spawnAcc = 0;
       this.shotAcc = 0;
@@ -566,6 +571,10 @@ function bootArena() {
       this.bossDone = false;
       this.bossDown = 0;
       this.hitStop = 0;
+      this.pullUntil = 0;
+      this.fastUntil = 0;
+      this.chestAcc = 0;
+      this.chestsOpened = 0;
       this.prevHp = this.hp;
       this.healWhy = "";
       this.paintHud();
@@ -615,6 +624,11 @@ function bootArena() {
       this.prevHp = this.hp;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
+      const tnow = this.time ? this.time.now : 0;
+      const bits = [];
+      if (tnow < this.pullUntil) bits.push(`旗吸い ${Math.ceil((this.pullUntil - tnow) / 1000)}`);
+      if (tnow < this.fastUntil) bits.push(`はやて ${Math.ceil((this.fastUntil - tnow) / 1000)}`);
+      if (hud.buff) hud.buff.textContent = bits.join(" · ");
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
@@ -678,6 +692,16 @@ function bootArena() {
       flag.strokeTriangle(10, 4, 26, 12, 10, 20);
       flag.generateTexture("mark-flag", 28, 30);
       flag.destroy();
+      const box = this.make.graphics({ add: false });
+      box.fillStyle(0x6b4a2a, 1);
+      box.fillRect(4, 12, 36, 22);
+      box.fillStyle(0x8a6238, 1);
+      box.fillRect(4, 4, 36, 14);
+      box.lineStyle(2, 0xf8b500, 1);
+      box.strokeRect(4, 4, 36, 30);
+      diamond(box, 22, 18, 6, 0xf8b500, 0x1b1916);
+      box.generateTexture("mark-chest", 44, 38);
+      box.destroy();
     }
     spawn(kind) {
       const w = this.scale.width;
@@ -716,6 +740,48 @@ function bootArena() {
         ease: "Sine.easeInOut",
       });
       this.gems.add(gem);
+    }
+    spawnChest() {
+      if (this.chestsOpened >= 2) return;
+      if (this.chests.countActive(true) > 0) return;
+      const w = this.scale.width;
+      const h = this.scale.height;
+      const x = Phaser.Math.Between(80, w - 80);
+      const y = Phaser.Math.Between(80, h - 80);
+      const box = this.physics.add.sprite(x, y, "mark-chest");
+      box.setDepth(6);
+      box.body.setCircle(16, 6, 4);
+      this.tweens.add({
+        targets: box,
+        y: y - 6,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+      this.chests.add(box);
+      this.callout("桐箱");
+    }
+    openChest(box) {
+      if (!box || !box.active) return;
+      box.destroy();
+      this.chestsOpened += 1;
+      const pull = Math.random() < 0.5;
+      if (pull) {
+        this.pullUntil = this.time.now + 10000;
+        this.callout("旗吸い");
+      } else {
+        this.fastUntil = this.time.now + 7000;
+        this.callout("はやて");
+      }
+    }
+    startHitStop(ms) {
+      this.hitStop = ms;
+      if (this.physics && this.physics.world) this.physics.world.pause();
+      if (this.cameras && this.cameras.main) {
+        this.cameras.main.flash(140, 248, 181, 0, false);
+        this.cameras.main.shake(200, 0.02);
+      }
     }
     flash(foe) {
       if (!foe.active) return;
@@ -784,8 +850,8 @@ function bootArena() {
           this.hp = Math.min(this.maxHp, this.hp + 10);
           this.callout("旗");
           this.pop(x, y - 18, "親玉 +10");
-          this.hitStop = 90;
-          this.hurtTick = 1100;
+          this.startHitStop(320);
+          this.hurtTick = 1600;
           if (this.hasSprite && this.player) {
             this.player.setTint(0xf8b500);
             this.time.delayedCall(220, () => {
@@ -954,6 +1020,7 @@ function bootArena() {
       if (this.ended) return;
       if (this.hitStop > 0) {
         this.hitStop -= delta;
+        if (this.hitStop <= 0 && this.physics && this.physics.world) this.physics.world.resume();
         this.paintHud();
         return;
       }
@@ -981,13 +1048,18 @@ function bootArena() {
         if (this.time.now - this.lastKill > 1600) this.combo = 0;
         if (this.left <= 0) this.finish(true);
       }
+      this.chestAcc += delta;
+      if (this.chestAcc > 14000) {
+        this.chestAcc = 0;
+        this.spawnChest();
+      }
       this.spawnAcc += delta * this.pace;
       if (this.spawnAcc > Math.max(420, 900 - this.lv * 40)) {
         this.spawnAcc = 0;
         this.spawn();
       }
       this.shotAcc += delta;
-      if (this.shotAcc > Math.max(160, k.rate - this.lv * 20)) {
+      if (this.shotAcc > Math.max(160, (this.time.now < this.fastUntil ? k.rate * 0.5 : k.rate) - this.lv * 20)) {
         this.shotAcc = 0;
         this.fire();
       }
@@ -1001,14 +1073,19 @@ function bootArena() {
           this.hp -= f.boss ? 10 : 2;
           this.hurtTick = f.boss ? 480 : 650;
           if (this.hp <= 0) this.finish(false);
+        } else if (d < reach && this.hurtTick > 0) {
+          const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
+          f.x += Math.cos(ang) * 6;
+          f.y += Math.sin(ang) * 6;
         }
       });
       this.gems.children.iterate((g) => {
         if (!g || !g.active || !this.player) return;
+        if (this.time.now >= this.pullUntil) return;
         const d = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y);
-        if (d < 90 && d > 6) {
-          g.x += (this.player.x - g.x) * 0.2;
-          g.y += (this.player.y - g.y) * 0.2;
+        if (d < 110 && d > 6) {
+          g.x += (this.player.x - g.x) * 0.16;
+          g.y += (this.player.y - g.y) * 0.16;
         }
       });
       let boss = null;
@@ -1020,6 +1097,10 @@ function bootArena() {
       if (bar) {
         bar.classList.toggle("hidden", !boss);
         if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
+      }
+      if (this.hasSprite && this.player) {
+        if (this.hurtTick > 0) this.player.setAlpha(0.42 + 0.48 * Math.abs(Math.sin(this.time.now / 70)));
+        else this.player.setAlpha(1);
       }
       this.paintHud();
     }
