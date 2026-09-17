@@ -1,4 +1,4 @@
-const VERSION = "0.4.13";
+const VERSION = "0.4.14";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -520,6 +520,8 @@ function bootArena() {
     hp: $("[data-hud-hp]"),
     hpbar: $("[data-hud-hpbar]"),
     combo: $("[data-hud-combo]"),
+    graze: $("[data-hud-graze]"),
+    score: $("[data-hud-score]"),
     lv: $("[data-hud-lv]"),
     buff: $("[data-hud-buff]"),
   };
@@ -615,6 +617,8 @@ function bootArena() {
       this.lastBuff = null;
       this.gotBuffs = [];
       this.graze = 0;
+      this.grazeStreak = 0;
+      this.grazeScore = 0;
       this.wardUntil = 0;
       this.buffMax = 22000;
       this.wardPending = false;
@@ -669,6 +673,8 @@ function bootArena() {
       this.prevHp = this.hp;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
+      if (hud.graze) hud.graze.textContent = this.grazeStreak > 0 ? `かすり ${this.grazeStreak}` : "";
+      if (hud.score) hud.score.textContent = `記録 ${this.liveScore()}`;
       const tnow = this.time ? this.time.now : 0;
       const chip = $("[data-buffchip]");
       const bbar = $("[data-buff-bar]");
@@ -690,6 +696,33 @@ function bootArena() {
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
+    }
+    liveScore(win) {
+      const clear = win ? 25 : 0;
+      return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
+    }
+    hajikiFoe(f) {
+      if (!f || !f.active) return;
+      const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
+      f.x += Math.cos(ang) * 18;
+      f.y += Math.sin(ang) * 18;
+      if (f.hajiki) return;
+      f.hajiki = true;
+      this.pop(f.x, f.y - 10, "弾き", "#f8b500");
+      f.setTint(0xf8b500);
+      this.time.delayedCall(160, () => {
+        if (f.active) f.clearTint();
+      });
+      if (this.cameras && this.cameras.main) this.cameras.main.flash(80, 248, 181, 0, false);
+      const fx = $("#fx");
+      if (fx) {
+        fx.className = "hajiki";
+        void fx.offsetWidth;
+        setTimeout(() => {
+          if (fx.className === "hajiki") fx.className = "";
+        }, 180);
+      }
+      buzz([18, 20, 28]);
     }
     callout(msg) {
       const w = this.scale.width / 2;
@@ -1170,7 +1203,7 @@ function bootArena() {
       lockPortrait();
       const play = $(".play");
       if (play) play.classList.remove("combo");
-      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 55 + this.graze;
+      const score = this.liveScore(win);
       const key = `bo-aibou:${mate.id}:${mode.id}`;
       let best = 0;
       try {
@@ -1282,16 +1315,29 @@ function bootArena() {
         if (d < reach && !guarded) {
           this.hp -= f.boss ? 10 : 2;
           this.hurtTick = f.boss ? 480 : 650;
+          this.grazeStreak = 0;
           if (this.hp <= 0) this.finish(false);
         } else if (d < reach && guarded) {
-          const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
-          f.x += Math.cos(ang) * 6;
-          f.y += Math.sin(ang) * 6;
-        } else if (!f.boss && !f.grazed && d < reach + 16) {
+          this.hajikiFoe(f);
+        } else if (f.hajiki && d > reach + 36) {
+          f.hajiki = false;
+        } else if (!f.boss && !guarded && !f.grazed && d >= reach && d < reach + 26) {
           f.grazed = true;
+          this.grazeStreak += 1;
           this.graze += 1;
-          this.pop(f.x, f.y, "+1", "#fff4a3");
-          buzz(12);
+          const pts = 2 * this.grazeStreak;
+          this.grazeScore += pts;
+          this.pop(this.player.x, this.player.y - 28, `かすり +${pts}`, "#fff4a3");
+          buzz([12, 16, 24]);
+          const fx = $("#fx");
+          if (fx) {
+            fx.className = "graze";
+            void fx.offsetWidth;
+            setTimeout(() => {
+              if (fx.className === "graze") fx.className = "";
+            }, 200);
+          }
+          if (this.grazeStreak % 3 === 0) this.dropGem(f.x, f.y);
         }
       });
       this.gems.children.iterate((g) => {

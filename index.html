@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.json">
   <title>相棒あそび · BushiDAO</title>
   <meta name="description" content="BOの相棒と走る。入場・参加無料。">
-  <link rel="stylesheet" href="styles.css?v=0.4.13">
+  <link rel="stylesheet" href="styles.css?v=0.4.14">
 </head>
 <body>
   <div id="app">
@@ -37,9 +37,9 @@
         <li>モコプー ふわふわ：まわりを溶かす。自分では回復しない</li>
         <li>心の回復は2つ。lvアップ / 親玉を倒したとき（氷青）。赤はダメージ</li>
         <li>敵は影の菱。親玉は陰の紋。右下に心</li>
-        <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪）</li>
-        <li>親玉を倒すと一息（虹の輪）。半血で速くなり菱が増える</li>
-        <li>連5で場が鳴る。かすると記録+1</li>
+        <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪。弾き。心は減らない）</li>
+        <li>親玉の心が半分で半血。同じ親玉が速くなり菱が増える。倒すと一息（虹の輪・弾き）</li>
+        <li>連5で場が鳴る。かすりは菱の寸前。HUDの記録が増える。被弾でかすりは途切れる</li>
         <li>「来るぞ」は敵が一気に増える合図</li>
         <li>終盤は敵が増える</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
@@ -85,6 +85,8 @@
         </span>
         <span data-hud-lv></span>
         <span data-hud-combo></span>
+        <span data-hud-graze></span>
+        <span data-hud-score></span>
         <span class="hpchip hidden" data-buffchip>
           <span data-hud-buff></span>
           <span class="hpbar buff"><i data-buff-bar></i></span>
@@ -136,6 +138,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.13"></script>
+  <script src="app.js?v=0.4.14"></script>
 </body>
 </html>
