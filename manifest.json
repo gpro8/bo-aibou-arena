@@ -1,0 +1,10 @@
+{
+  "name": "相棒あそび",
+  "short_name": "相棒あそび",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#12100e",
+  "theme_color": "#12100e",
+  "lang": "ja"
+}

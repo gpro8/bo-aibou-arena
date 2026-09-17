@@ -111,12 +111,21 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   z-index: 3;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 10px;
+  gap: 6px 8px;
   align-items: center;
   padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 10px calc(12px + var(--safe-l));
-  background: linear-gradient(to bottom, rgba(12, 11, 10, 0.72), rgba(12, 11, 10, 0));
+  background: transparent;
   font-size: 12px;
+  font-weight: 700;
+  color: #fff8e8;
+  text-shadow: 0 1px 2px #000, 0 0 8px #000;
   pointer-events: none;
+}
+#hud > span {
+  background: rgba(12, 11, 10, 0.55);
+  border: 1px solid rgba(248, 181, 0, 0.4);
+  border-radius: 999px;
+  padding: 3px 8px;
 }
 #hud .btn { pointer-events: auto; }
 #hud [data-hud-skill],
@@ -129,6 +138,7 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   overflow: hidden;
   display: inline-block;
   vertical-align: middle;
+  border: 1px solid rgba(248, 181, 0, 0.55);
 }
 .hpbar i { display: block; height: 100%; width: 100%; background: #e07a7a; }
 #arena {

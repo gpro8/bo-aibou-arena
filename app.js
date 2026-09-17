@@ -64,6 +64,7 @@ function show(name) {
   if (name !== "play") {
     state.pendingPlay = false;
     clearStick();
+    exitFullscreen();
     const rotate = $("#rotate");
     const stick = $("#stick");
     if (rotate) rotate.classList.add("hidden");
@@ -90,7 +91,48 @@ function enterPlay() {
   killGame();
   show("play");
   state.pendingPlay = true;
+  tryFullscreen();
   syncPlayGate();
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function tryFullscreen() {
+  if (isStandalone() || document.fullscreenElement || document.webkitFullscreenElement) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;
+  Promise.resolve(req.call(el)).catch(() => {});
+}
+
+function exitFullscreen() {
+  const x = document.exitFullscreen || document.webkitExitFullscreen;
+  if (!x) return;
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    Promise.resolve(x.call(document)).catch(() => {});
+  }
+}
+
+function fitPlay() {
+  const play = $("[data-screen='play']");
+  if (!play || play.classList.contains("hidden")) return;
+  const vv = window.visualViewport;
+  const w = Math.round(vv ? vv.width : window.innerWidth);
+  const h = Math.round(vv ? vv.height : window.innerHeight);
+  const left = vv ? vv.offsetLeft : 0;
+  const top = vv ? vv.offsetTop : 0;
+  play.style.width = `${w}px`;
+  play.style.height = `${h}px`;
+  play.style.left = `${left}px`;
+  play.style.top = `${top}px`;
+  const arena = $("#arena");
+  if (arena) {
+    arena.style.width = `${w}px`;
+    arena.style.height = `${h}px`;
+  }
+  if (state.game) state.game.scale.refresh();
 }
 
 function syncPlayGate() {
@@ -98,6 +140,7 @@ function syncPlayGate() {
   const stickEl = $("#stick");
   const onPlay = !$("[data-screen='play']").classList.contains("hidden");
   if (!onPlay) return;
+  fitPlay();
   const coarse = isCoarse();
   const land = isLandscape();
   if (coarse && !land) {
@@ -328,14 +371,14 @@ function bootArena() {
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
       const boss = kind === "boss";
-      const r = boss ? 22 : 12;
+      const r = boss ? 28 : 12;
       const foe = this.add.circle(x, y, r, stage.foe);
       this.physics.add.existing(foe);
       foe.body.setCircle(r);
-      foe.hp = boss ? 110 + this.lv * 6 : 20 + (this.lv - 1) * 2;
+      foe.hp = boss ? 170 + this.lv * 10 : 20 + (this.lv - 1) * 2;
       foe.boss = boss;
-      foe.spd = boss ? 58 : 70 + this.lv * 8;
-      if (boss) foe.setStrokeStyle(3, 0xf8b500, 1);
+      foe.spd = boss ? 80 : 70 + this.lv * 8;
+      if (boss) foe.setStrokeStyle(4, 0xf8b500, 1);
       this.foes.add(foe);
     }
     dropGem(x, y) {
@@ -566,11 +609,11 @@ function bootArena() {
       this.foes.children.iterate((f) => {
         if (!f || !f.body) return;
         this.physics.moveToObject(f, this.player, f.spd || 70);
-        const reach = f.boss ? 44 : 34;
+        const reach = f.boss ? 54 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
         if (d < reach && this.hurtTick <= 0) {
-          this.hp -= f.boss ? 5 : 2;
-          this.hurtTick = 650;
+          this.hp -= f.boss ? 10 : 2;
+          this.hurtTick = f.boss ? 480 : 650;
           if (this.hp <= 0) this.finish(false);
         }
       });
@@ -613,6 +656,10 @@ async function main() {
   bindStick();
   window.addEventListener("resize", syncPlayGate);
   window.addEventListener("orientationchange", () => setTimeout(syncPlayGate, 200));
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitPlay);
+    window.visualViewport.addEventListener("scroll", fitPlay);
+  }
   document.addEventListener(
     "touchmove",
     (ev) => {
