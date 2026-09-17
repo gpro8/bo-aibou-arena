@@ -1,4 +1,4 @@
-const VERSION = "0.4.4";
+const VERSION = "0.4.5";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -575,6 +575,9 @@ function bootArena() {
       this.fastUntil = 0;
       this.chestAcc = 0;
       this.chestsOpened = 0;
+      this.buffMax = 22000;
+      this.wardPending = false;
+      this.ward = null;
       this.prevHp = this.hp;
       this.healWhy = "";
       this.paintHud();
@@ -625,10 +628,19 @@ function bootArena() {
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
       const tnow = this.time ? this.time.now : 0;
-      const bits = [];
-      if (tnow < this.pullUntil) bits.push(`旗吸い ${Math.ceil((this.pullUntil - tnow) / 1000)}`);
-      if (tnow < this.fastUntil) bits.push(`はやて ${Math.ceil((this.fastUntil - tnow) / 1000)}`);
-      if (hud.buff) hud.buff.textContent = bits.join(" · ");
+      const chip = $("[data-buffchip]");
+      const bbar = $("[data-buff-bar]");
+      const leftP = this.pullUntil - tnow;
+      const leftF = this.fastUntil - tnow;
+      const active = leftP > leftF ? (leftP > 0 ? "pull" : "") : leftF > 0 ? "fast" : "";
+      if (chip) chip.classList.toggle("hidden", !active);
+      if (active === "pull") {
+        if (hud.buff) hud.buff.textContent = `旗吸い ${Math.ceil(leftP / 1000)}`;
+        if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (leftP / this.buffMax) * 100))}%`;
+      } else if (active === "fast") {
+        if (hud.buff) hud.buff.textContent = `はやて ${Math.ceil(leftF / 1000)}`;
+        if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (leftF / this.buffMax) * 100))}%`;
+      } else if (hud.buff) hud.buff.textContent = "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
@@ -766,12 +778,15 @@ function bootArena() {
       if (!box || !box.active) return;
       box.destroy();
       this.chestsOpened += 1;
-      const pull = Math.random() < 0.5;
-      if (pull) {
-        this.pullUntil = this.time.now + 10000;
+      const dur = 22000;
+      this.buffMax = dur;
+      if (Math.random() < 0.5) {
+        this.pullUntil = this.time.now + dur;
+        this.fastUntil = 0;
         this.callout("旗吸い");
       } else {
-        this.fastUntil = this.time.now + 7000;
+        this.fastUntil = this.time.now + dur;
+        this.pullUntil = 0;
         this.callout("はやて");
       }
     }
@@ -779,9 +794,31 @@ function bootArena() {
       this.hitStop = ms;
       if (this.physics && this.physics.world) this.physics.world.pause();
       if (this.cameras && this.cameras.main) {
-        this.cameras.main.flash(140, 248, 181, 0, false);
-        this.cameras.main.shake(200, 0.02);
+        this.cameras.main.flash(240, 248, 181, 0, false);
+        this.cameras.main.shake(340, 0.03);
+        if (this.cameras.main.zoomTo) this.cameras.main.zoomTo(1.16, 80);
       }
+      const fx = $("#fx");
+      if (fx) fx.className = "stop";
+    }
+    endHitStop() {
+      if (this.physics && this.physics.world) this.physics.world.resume();
+      if (this.cameras && this.cameras.main && this.cameras.main.zoomTo) this.cameras.main.zoomTo(1, 160);
+      const fx = $("#fx");
+      if (fx) fx.className = "";
+      if (this.wardPending) {
+        this.wardPending = false;
+        this.hurtTick = 2200;
+        this.callout("一息");
+        this.spawnWard();
+      }
+    }
+    spawnWard() {
+      if (this.ward && this.ward.active) this.ward.destroy();
+      if (!this.player) return;
+      this.ward = this.add.circle(this.player.x, this.player.y, 34, 0xf8b500, 0.18);
+      this.ward.setStrokeStyle(5, 0xf8b500, 0.95);
+      this.ward.setDepth(7);
     }
     flash(foe) {
       if (!foe.active) return;
@@ -848,16 +885,11 @@ function bootArena() {
           this.healWhy = "親玉";
           this.maxHp += 2;
           this.hp = Math.min(this.maxHp, this.hp + 10);
-          this.callout("旗");
+          this.callout("倒した");
           this.pop(x, y - 18, "親玉 +10");
-          this.startHitStop(320);
-          this.hurtTick = 1600;
-          if (this.hasSprite && this.player) {
-            this.player.setTint(0xf8b500);
-            this.time.delayedCall(220, () => {
-              if (this.player && this.player.active) this.player.clearTint();
-            });
-          }
+          this.startHitStop(560);
+          this.wardPending = true;
+          if (this.hasSprite && this.player) this.player.setTint(0xf8b500);
           const bar = $("#bosshp");
           if (bar) bar.classList.add("hidden");
         }
@@ -886,7 +918,7 @@ function bootArena() {
       const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 12, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
-      spark.vx = dir * 0.52;
+      spark.vx = dir * (this.time.now < this.fastUntil ? 0.72 : 0.52);
       spark.travel = 520;
       spark.life = 1500;
       spark.tick = 0;
@@ -1020,7 +1052,7 @@ function bootArena() {
       if (this.ended) return;
       if (this.hitStop > 0) {
         this.hitStop -= delta;
-        if (this.hitStop <= 0 && this.physics && this.physics.world) this.physics.world.resume();
+        if (this.hitStop <= 0) this.endHitStop();
         this.paintHud();
         return;
       }
@@ -1059,9 +1091,12 @@ function bootArena() {
         this.spawn();
       }
       this.shotAcc += delta;
-      if (this.shotAcc > Math.max(160, (this.time.now < this.fastUntil ? k.rate * 0.5 : k.rate) - this.lv * 20)) {
+      const hayate = this.time.now < this.fastUntil;
+      const rate = hayate ? Math.max(110, k.rate * 0.28) : k.rate;
+      if (this.shotAcc > Math.max(110, rate - this.lv * 20)) {
         this.shotAcc = 0;
         this.fire();
+        if (hayate && k.kind === "spark") this.fire();
       }
       this.hurtTick -= delta;
       this.foes.children.iterate((f) => {
@@ -1098,9 +1133,19 @@ function bootArena() {
         bar.classList.toggle("hidden", !boss);
         if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
       }
-      if (this.hasSprite && this.player) {
-        if (this.hurtTick > 0) this.player.setAlpha(0.42 + 0.48 * Math.abs(Math.sin(this.time.now / 70)));
-        else this.player.setAlpha(1);
+      if (this.ward && this.ward.active) {
+        if (this.hurtTick > 0 && this.player) {
+          this.ward.x = this.player.x;
+          this.ward.y = this.player.y;
+          if (this.hasSprite) this.player.setAlpha(0.5 + 0.45 * Math.abs(Math.sin(this.time.now / 70)));
+        } else {
+          this.ward.destroy();
+          this.ward = null;
+          if (this.hasSprite && this.player) {
+            this.player.clearTint();
+            this.player.setAlpha(1);
+          }
+        }
       }
       this.paintHud();
     }

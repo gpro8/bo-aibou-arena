@@ -260,6 +260,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 }
 #fx.dmg { background: rgba(160, 30, 30, 0.32); animation: fxpop 320ms ease-out; }
 #fx.heal { background: rgba(126, 207, 255, 0.28); animation: fxpop 320ms ease-out; }
+#fx.stop { background: rgba(248, 181, 0, 0.42); }
+.hpbar.buff i { background: linear-gradient(90deg, #f8b500, #fff4a3); }
 @keyframes fxpop {
   0% { opacity: 1; }
   100% { opacity: 0; }

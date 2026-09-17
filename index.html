@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.json">
   <title>相棒あそび · BushiDAO</title>
   <meta name="description" content="BOの相棒と走る。入場・参加無料。">
-  <link rel="stylesheet" href="styles.css?v=0.4.4">
+  <link rel="stylesheet" href="styles.css?v=0.4.5">
 </head>
 <body>
   <div id="app">
@@ -81,7 +81,10 @@
         </span>
         <span data-hud-lv></span>
         <span data-hud-combo></span>
-        <span data-hud-buff></span>
+        <span class="hpchip hidden" data-buffchip>
+          <span data-hud-buff></span>
+          <span class="hpbar buff"><i data-buff-bar></i></span>
+        </span>
         <button type="button" class="btn tiny" data-pause>一時停止</button>
       </div>
       <div id="fx"></div>
@@ -129,6 +132,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.4"></script>
+  <script src="app.js?v=0.4.5"></script>
 </body>
 </html>
