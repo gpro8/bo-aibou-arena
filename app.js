@@ -1,4 +1,4 @@
-const VERSION = "0.4.12";
+const VERSION = "0.4.13";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -112,8 +112,29 @@ function clearStick() {
   if (knob) knob.style.transform = "translate(-50%, -50%)";
 }
 
+function lockPortrait() {
+  try {
+    const o = screen.orientation;
+    if (o && o.lock) {
+      const p = o.lock("portrait");
+      if (p && p.catch) p.catch(() => {});
+    }
+  } catch {
+    /* iOS / no lock */
+  }
+}
+
+function unlockOrient() {
+  try {
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  } catch {
+    /* no unlock */
+  }
+}
+
 function enterPlay() {
   killGame();
+  unlockOrient();
   const result = $("#result-ov");
   const raise = $("#raise-ov");
   const pause = $("#pause-ov");
@@ -524,6 +545,7 @@ function bootArena() {
       this.pace = mode.pace;
       this.hasSprite = this.textures.exists("mate");
       this.face = 1;
+      this.look = "right";
       this.cameras.main.setBackgroundColor(stage.bg);
       this.bakeMarks();
       const w = this.scale.width;
@@ -1079,20 +1101,73 @@ function bootArena() {
       const spd = k.speed * (1 + (this.lv - 1) * 0.06);
       b.setVelocity(moving ? (vx / len) * spd : 0, moving ? (vy / len) * spd : 0);
       if (this.hasSprite) {
-        // Run frames face LEFT. Flip when moving right.
-        if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
-        if (this.face == null) this.face = 1;
+        if (k.bob) {
+          if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
+          this.player.setFlipX(this.face > 0);
+          if (moving) this.player.anims.play("mate-run", true);
+          else {
+            this.player.anims.stop();
+            this.player.setFrame(1);
+          }
+        } else {
+          this.paintSumi(vx, vy, moving);
+        }
+      }
+    }
+    stopVertBob() {
+      if (this.vBob) {
+        this.vBob.stop();
+        this.vBob = null;
+      }
+      if (this.player && this.player.setScale) this.player.setScale(0.52);
+    }
+    startVertBob() {
+      if (this.vBob && this.vBob.isPlaying()) return;
+      if (!this.player) return;
+      this.player.setScale(0.52);
+      this.vBob = this.tweens.add({
+        targets: this.player,
+        scaleY: 0.58,
+        duration: 160,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+    paintSumi(vx, vy, moving) {
+      const ax = Math.abs(vx);
+      const ay = Math.abs(vy);
+      if (moving && ax >= ay && ax > 0.01) {
+        this.stopVertBob();
+        this.face = vx > 0 ? 1 : -1;
+        this.look = this.face > 0 ? "right" : "left";
         this.player.setFlipX(this.face > 0);
-        if (moving) this.player.anims.play("mate-run", true);
-        else {
-          this.player.anims.stop();
-          this.player.setFrame(this.face > 0 ? 2 : 1);
+        this.player.anims.play("mate-run", true);
+      } else if (moving && ay > 0.01) {
+        this.player.anims.stop();
+        this.player.setFlipX(false);
+        this.look = vy > 0 ? "front" : "back";
+        this.player.setFrame(vy > 0 ? 0 : 3);
+        this.startVertBob();
+      } else {
+        this.stopVertBob();
+        this.player.anims.stop();
+        if (this.look === "back") {
+          this.player.setFlipX(false);
+          this.player.setFrame(3);
+        } else if (this.look === "front") {
+          this.player.setFlipX(false);
+          this.player.setFrame(0);
+        } else {
+          this.player.setFrame(1);
+          this.player.setFlipX(this.face > 0);
         }
       }
     }
     finish(win) {
       if (this.ended) return;
       this.ended = true;
+      lockPortrait();
       const play = $(".play");
       if (play) play.classList.remove("combo");
       const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 55 + this.graze;
@@ -1203,11 +1278,12 @@ function bootArena() {
         this.physics.moveToObject(f, this.player, f.spd || 70);
         const reach = f.boss ? 54 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
-        if (d < reach && this.hurtTick <= 0) {
+        const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
+        if (d < reach && !guarded) {
           this.hp -= f.boss ? 10 : 2;
           this.hurtTick = f.boss ? 480 : 650;
           if (this.hp <= 0) this.finish(false);
-        } else if (d < reach && this.hurtTick > 0) {
+        } else if (d < reach && guarded) {
           const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
           f.x += Math.cos(ang) * 6;
           f.y += Math.sin(ang) * 6;
@@ -1325,6 +1401,7 @@ function resumePlay() {
 }
 
 function killGame() {
+  unlockOrient();
   if (state.game) {
     state.game.destroy(true);
     state.game = null;
