@@ -81,6 +81,7 @@ html:-webkit-full-screen #raise-ov * {
 }
 #bosshp.hidden { display: none !important; }
 #bosshp.hit { box-shadow: 0 0 16px #f8b500; }
+#bosshp.rage { box-shadow: 0 0 22px #ff3d8a; }
 #bosshp .hpbar { width: 100%; flex: 1 1 auto; }
 .hpbar.boss i { background: linear-gradient(90deg, #c94a4a, #f8b500); }
 body.playing {
@@ -261,6 +262,18 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 #fx.dmg { background: rgba(160, 30, 30, 0.32); animation: fxpop 320ms ease-out; }
 #fx.heal { background: rgba(126, 207, 255, 0.28); animation: fxpop 320ms ease-out; }
 #fx.stop { background: rgba(248, 181, 0, 0.42); }
+.play.combo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: inset 0 0 56px rgba(248, 181, 0, 0.4);
+  animation: combopulse 480ms ease-in-out infinite;
+}
+@keyframes combopulse {
+  50% { box-shadow: inset 0 0 80px rgba(255, 61, 138, 0.5); }
+}
 .hpbar.buff i { background: linear-gradient(90deg, #f8b500, #fff4a3); }
 @keyframes fxpop {
   0% { opacity: 1; }

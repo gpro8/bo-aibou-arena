@@ -1,4 +1,4 @@
-const VERSION = "0.4.8";
+const VERSION = "0.4.9";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -114,6 +114,14 @@ function clearStick() {
 
 function enterPlay() {
   killGame();
+  const result = $("#result-ov");
+  const raise = $("#raise-ov");
+  const pause = $("#pause-ov");
+  if (result) result.classList.add("hidden");
+  if (raise) raise.classList.add("hidden");
+  if (pause) pause.classList.add("hidden");
+  const play = $("[data-screen='play']");
+  if (play) play.classList.remove("combo");
   applyStickSide();
   show("play");
   state.pendingPlay = true;
@@ -583,6 +591,9 @@ function bootArena() {
       this.chestAcc = 0;
       this.chestsOpened = 0;
       this.lastBuff = null;
+      this.gotBuffs = [];
+      this.graze = 0;
+      this.wardUntil = 0;
       this.buffMax = 22000;
       this.wardPending = false;
       this.ward = null;
@@ -641,14 +652,18 @@ function bootArena() {
       const bbar = $("[data-buff-bar]");
       const leftP = this.pullUntil - tnow;
       const leftF = this.fastUntil - tnow;
-      const active = leftP > leftF ? (leftP > 0 ? "pull" : "") : leftF > 0 ? "fast" : "";
-      if (chip) chip.classList.toggle("hidden", !active);
-      if (active === "pull") {
-        if (hud.buff) hud.buff.textContent = `旗吸い ${Math.ceil(leftP / 1000)}`;
-        if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (leftP / this.buffMax) * 100))}%`;
-      } else if (active === "fast") {
-        if (hud.buff) hud.buff.textContent = `はやて ${Math.ceil(leftF / 1000)}`;
-        if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (leftF / this.buffMax) * 100))}%`;
+      const leftW = this.wardUntil - tnow;
+      const bits = [
+        { k: "pull", t: leftP, n: "旗吸い" },
+        { k: "fast", t: leftF, n: "はやて" },
+        { k: "ward", t: leftW, n: "守" },
+      ].filter((b) => b.t > 0);
+      bits.sort((a, b) => b.t - a.t);
+      const top = bits[0];
+      if (chip) chip.classList.toggle("hidden", !top);
+      if (top) {
+        if (hud.buff) hud.buff.textContent = `${top.n} ${Math.ceil(top.t / 1000)}`;
+        if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (top.t / this.buffMax) * 100))}%`;
       } else if (hud.buff) hud.buff.textContent = "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
@@ -763,7 +778,7 @@ function bootArena() {
       this.gems.add(gem);
     }
     spawnChest() {
-      if (this.chestsOpened >= 2) return;
+      if (this.chestsOpened >= 3) return;
       if (this.chests.countActive(true) > 0) return;
       const w = this.scale.width;
       const h = this.scale.height;
@@ -787,21 +802,32 @@ function bootArena() {
       if (!box || !box.active) return;
       box.destroy();
       this.chestsOpened += 1;
-      const dur = 22000;
-      this.buffMax = dur;
-      let pull;
-      if (this.lastBuff === "hayate") pull = true;
-      else if (this.lastBuff === "pull") pull = false;
-      else pull = Math.random() < 0.58;
-      this.lastBuff = pull ? "pull" : "hayate";
-      if (pull) {
+      const kinds = ["pull", "hayate", "ward"].filter((x) => !this.gotBuffs.includes(x));
+      let pick = kinds[0] || "pull";
+      if (this.gotBuffs.length === 0) {
+        const r = Math.random();
+        pick = r < 0.5 ? "pull" : r < 0.75 ? "hayate" : "ward";
+      } else if (kinds.length > 1) {
+        pick = kinds[Math.floor(Math.random() * kinds.length)];
+      }
+      this.gotBuffs.push(pick);
+      this.lastBuff = pick;
+      if (pick === "pull") {
+        const dur = 22000;
+        this.buffMax = dur;
         this.pullUntil = this.time.now + dur;
-        this.fastUntil = 0;
         this.callout("旗吸い");
-      } else {
+      } else if (pick === "hayate") {
+        const dur = 22000;
+        this.buffMax = dur;
         this.fastUntil = this.time.now + dur;
-        this.pullUntil = 0;
         this.callout("はやて");
+      } else {
+        const dur = 9000;
+        this.buffMax = dur;
+        this.wardUntil = this.time.now + dur;
+        this.callout("守");
+        this.spawnWard();
       }
     }
     startHitStop(ms) {
@@ -900,6 +926,16 @@ function bootArena() {
           void bar.offsetWidth;
           bar.classList.add("hit");
         }
+        if (!foe.raged && foe.hp <= foe.maxHp * 0.5) {
+          foe.raged = true;
+          foe.spd = 125;
+          this.callout("半血");
+          buzz([20, 24, 20, 24, 80]);
+          if (bar) bar.classList.add("rage");
+          this.time.delayedCall(40, () => {
+            for (let i = 0; i < 4; i += 1) this.spawn();
+          });
+        }
       }
       if (foe.hp <= 0) {
         const boss = foe.boss;
@@ -919,6 +955,12 @@ function bootArena() {
           this.dry += 1;
         }
         if (this.combo >= 4) this.dropGem(x + 10, y - 8);
+        if (this.combo >= 5) {
+          this.dropGem(x - 10, y + 8);
+          const play = $(".play");
+          if (play) play.classList.add("combo");
+          if (this.combo === 5) this.callout("連");
+        }
         if (boss) {
           this.bossDown += 1;
           this.dropGem(x - 16, y);
@@ -1051,7 +1093,9 @@ function bootArena() {
     finish(win) {
       if (this.ended) return;
       this.ended = true;
-      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 55;
+      const play = $(".play");
+      if (play) play.classList.remove("combo");
+      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 55 + this.graze;
       const key = `bo-aibou:${mate.id}:${mode.id}`;
       let best = 0;
       try {
@@ -1128,11 +1172,15 @@ function bootArena() {
           this.cameras.main.shake(220, 0.012);
           buzz([30, 40, 90]);
         }
-        if (this.time.now - this.lastKill > 1600) this.combo = 0;
+        if (this.time.now - this.lastKill > 1600) {
+          this.combo = 0;
+          const play = $(".play");
+          if (play) play.classList.remove("combo");
+        }
         if (this.left <= 0) this.finish(true);
       }
       this.chestAcc += delta;
-      if (this.chestAcc > 14000) {
+      if (this.chestAcc > 12000) {
         this.chestAcc = 0;
         this.spawnChest();
       }
@@ -1163,6 +1211,11 @@ function bootArena() {
           const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
           f.x += Math.cos(ang) * 6;
           f.y += Math.sin(ang) * 6;
+        } else if (!f.boss && !f.grazed && d < reach + 16) {
+          f.grazed = true;
+          this.graze += 1;
+          this.pop(f.x, f.y, "+1", "#fff4a3");
+          buzz(12);
         }
       });
       this.gems.children.iterate((g) => {
@@ -1182,10 +1235,11 @@ function bootArena() {
       const fill = $("[data-boss-hpbar]");
       if (bar) {
         bar.classList.toggle("hidden", !boss);
+        if (!boss) bar.classList.remove("rage");
         if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
       }
       if (this.ward && this.ward.active) {
-        if (this.hurtTick > 0 && this.player) {
+        if ((this.hurtTick > 0 || (this.time && this.time.now < this.wardUntil)) && this.player) {
           this.ward.x = this.player.x;
           this.ward.y = this.player.y;
           this.wardHue = (this.wardHue + delta * 0.01) % NEON.length;
