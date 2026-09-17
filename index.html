@@ -28,7 +28,7 @@
     <section class="screen hidden" data-screen="how">
       <h1>遊び方</h1>
       <ul class="how">
-        <li>指でなぞる（縦でも）。攻撃は相棒</li>
+        <li>画面を横に。左下で動かす。攻撃は相棒</li>
         <li>火花は前に置く。寄せてから討つ</li>
         <li>半ばに影の親玉</li>
         <li>記録は端末に残る。もういちど</li>
@@ -46,6 +46,7 @@
       <div class="mates" data-mates></div>
       <p class="hint" data-mate-blurb></p>
       <p class="hint" data-setup-rec></p>
+      <p class="hint">走るときは画面を横に。左下で動かす</p>
       <div class="row">
         <button type="button" class="btn ghost" data-go="title">もどる</button>
         <button type="button" class="btn gold" data-run>走る</button>
@@ -64,6 +65,11 @@
         <button type="button" class="btn tiny" data-pause>一時停止</button>
       </div>
       <div id="arena"></div>
+      <div id="stick" class="hidden" aria-hidden="true"><i data-knob></i></div>
+      <div id="rotate" class="hidden">
+        <p>画面を横に</p>
+        <p class="hint">横にしてから走る</p>
+      </div>
     </section>
 
     <section class="screen hidden" data-screen="pause">

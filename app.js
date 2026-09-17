@@ -53,12 +53,110 @@ const state = {
   mate: null,
   game: null,
   last: null,
+  stick: { x: 0, y: 0 },
+  pendingPlay: false,
 };
 
 function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
   document.body.classList.toggle("playing", name === "play" || name === "pause");
   if (name === "title" || name === "setup") paintRec();
+  if (name !== "play") {
+    state.pendingPlay = false;
+    clearStick();
+    const rotate = $("#rotate");
+    const stick = $("#stick");
+    if (rotate) rotate.classList.add("hidden");
+    if (stick) stick.classList.add("hidden");
+  }
+}
+
+function isCoarse() {
+  return window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+}
+
+function isLandscape() {
+  return window.innerWidth >= window.innerHeight;
+}
+
+function clearStick() {
+  state.stick.x = 0;
+  state.stick.y = 0;
+  const knob = $("[data-knob]");
+  if (knob) knob.style.transform = "translate(-50%, -50%)";
+}
+
+function enterPlay() {
+  killGame();
+  show("play");
+  state.pendingPlay = true;
+  syncPlayGate();
+}
+
+function syncPlayGate() {
+  const rotate = $("#rotate");
+  const stickEl = $("#stick");
+  const onPlay = !$("[data-screen='play']").classList.contains("hidden");
+  if (!onPlay) return;
+  const coarse = isCoarse();
+  const land = isLandscape();
+  if (coarse && !land) {
+    rotate.classList.remove("hidden");
+    stickEl.classList.add("hidden");
+    if (state.game) state.game.scene.pause("arena");
+    return;
+  }
+  rotate.classList.add("hidden");
+  if (coarse) stickEl.classList.remove("hidden");
+  else stickEl.classList.add("hidden");
+  if (state.pendingPlay && !state.game) {
+    state.pendingPlay = false;
+    bootArena();
+  } else if (state.game) {
+    state.game.scene.resume("arena");
+    state.game.scale.refresh();
+  }
+}
+
+function bindStick() {
+  const stick = $("#stick");
+  const knob = $("[data-knob]");
+  if (!stick || !knob) return;
+  let pid = null;
+  const apply = (x, y) => {
+    const r = stick.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    let dx = x - cx;
+    let dy = y - cy;
+    const max = r.width / 2 - 10;
+    const len = Math.hypot(dx, dy) || 1;
+    if (len > max) {
+      dx = (dx / len) * max;
+      dy = (dy / len) * max;
+    }
+    state.stick.x = dx / max;
+    state.stick.y = dy / max;
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  };
+  stick.addEventListener("pointerdown", (ev) => {
+    pid = ev.pointerId;
+    stick.setPointerCapture(pid);
+    apply(ev.clientX, ev.clientY);
+    ev.preventDefault();
+  });
+  stick.addEventListener("pointermove", (ev) => {
+    if (pid == null || ev.pointerId !== pid) return;
+    apply(ev.clientX, ev.clientY);
+    ev.preventDefault();
+  });
+  const up = (ev) => {
+    if (pid == null || ev.pointerId !== pid) return;
+    pid = null;
+    clearStick();
+  };
+  stick.addEventListener("pointerup", up);
+  stick.addEventListener("pointercancel", up);
 }
 
 function loadBest() {
@@ -383,15 +481,8 @@ function bootArena() {
       if (c.D.isDown || c.RIGHT.isDown) vx += 1;
       if (c.W.isDown || c.UP.isDown) vy -= 1;
       if (c.S.isDown || c.DOWN.isDown) vy += 1;
-      const ptr = this.input.activePointer;
-      if (ptr.isDown) {
-        const dx = ptr.worldX - this.player.x;
-        const dy = ptr.worldY - this.player.y;
-        if (Math.hypot(dx, dy) > 8) {
-          vx = dx;
-          vy = dy;
-        }
-      }
+      vx += state.stick.x;
+      vy += state.stick.y;
       const len = Math.hypot(vx, vy) || 1;
       const moving = Math.hypot(vx, vy) > 0.01;
       const spd = k.speed * (1 + (this.lv - 1) * 0.06);
@@ -519,6 +610,9 @@ async function main() {
   state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
   renderSetup();
 
+  bindStick();
+  window.addEventListener("resize", syncPlayGate);
+  window.addEventListener("orientationchange", () => setTimeout(syncPlayGate, 200));
   document.addEventListener(
     "touchmove",
     (ev) => {
@@ -557,8 +651,7 @@ async function main() {
       return;
     }
     if (ev.target.closest("[data-run]")) {
-      show("play");
-      bootArena();
+      enterPlay();
       return;
     }
     if (ev.target.closest("[data-pause]")) {
@@ -568,7 +661,7 @@ async function main() {
     }
     if (ev.target.closest("[data-resume]")) {
       show("play");
-      if (state.game) state.game.scene.resume("arena");
+      syncPlayGate();
       return;
     }
     if (ev.target.closest("[data-quit]")) {
@@ -577,8 +670,7 @@ async function main() {
       return;
     }
     if (ev.target.closest("[data-again]")) {
-      show("play");
-      bootArena();
+      enterPlay();
     }
   });
 }

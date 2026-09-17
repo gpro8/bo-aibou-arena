@@ -26,7 +26,15 @@ html, body {
 body.playing {
   overflow: hidden;
   height: 100dvh;
+  width: 100vw;
   touch-action: none;
+}
+body.playing #app {
+  max-width: none;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  margin: 0;
 }
 #app {
   max-width: 720px;
@@ -88,6 +96,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   padding: 0;
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
   z-index: 2;
   background: #0c0b0a;
   gap: 0;
@@ -127,6 +137,47 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   -webkit-user-select: none;
   user-select: none;
 }
+#stick {
+  position: absolute;
+  left: calc(16px + var(--safe-l));
+  bottom: calc(16px + var(--safe-b));
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  border: 2px solid rgba(248, 181, 0, 0.5);
+  background: rgba(12, 11, 10, 0.28);
+  z-index: 4;
+  touch-action: none;
+}
+#stick i {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(248, 181, 0, 0.88);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+#rotate {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #12100e;
+  color: var(--gold);
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  padding: 24px;
+}
+#rotate.hidden,
+#stick.hidden { display: none !important; }
 @media (min-width: 720px) {
   #hud { font-size: 13px; }
   .hpbar { width: 72px; }
