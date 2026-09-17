@@ -1,4 +1,4 @@
-const VERSION = "0.4.5";
+const VERSION = "0.4.6";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -726,7 +726,7 @@ function bootArena() {
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
-      foe.hp = boss ? 280 + this.lv * 16 : 20 + (this.lv - 1) * 2;
+      foe.hp = boss ? 460 + this.lv * 24 : 20 + (this.lv - 1) * 2;
       foe.maxHp = foe.hp;
       foe.boss = boss;
       foe.spd = boss ? 80 : 70 + this.lv * 8;
@@ -808,17 +808,45 @@ function bootArena() {
       if (fx) fx.className = "";
       if (this.wardPending) {
         this.wardPending = false;
-        this.hurtTick = 2200;
+        this.hurtTick = 3300;
         this.callout("一息");
+        if (this.hasSprite && this.player) {
+          this.player.clearTint();
+          this.player.setAlpha(1);
+        }
         this.spawnWard();
       }
     }
     spawnWard() {
       if (this.ward && this.ward.active) this.ward.destroy();
       if (!this.player) return;
-      this.ward = this.add.circle(this.player.x, this.player.y, 34, 0xf8b500, 0.18);
-      this.ward.setStrokeStyle(5, 0xf8b500, 0.95);
+      this.wardHue = 0;
+      this.rippleAcc = 0;
+      this.ward = this.add.circle(this.player.x, this.player.y, 36, NEON[0], 0.1);
+      this.ward.setStrokeStyle(6, NEON[1], 1);
       this.ward.setDepth(7);
+      this.tweens.add({
+        targets: this.ward,
+        scale: 1.32,
+        duration: 460,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
+    pulseRipple() {
+      if (!this.player) return;
+      const col = NEON[Math.floor(this.wardHue) % NEON.length];
+      const r = this.add.circle(this.player.x, this.player.y, 28, col, 0.12);
+      r.setStrokeStyle(4, col, 0.9);
+      r.setDepth(6);
+      this.tweens.add({
+        targets: r,
+        scale: 2.6,
+        alpha: 0,
+        duration: 640,
+        onComplete: () => r.destroy(),
+      });
     }
     flash(foe) {
       if (!foe.active) return;
@@ -884,9 +912,9 @@ function bootArena() {
           this.dropGem(x, y + 12);
           this.healWhy = "親玉";
           this.maxHp += 2;
-          this.hp = Math.min(this.maxHp, this.hp + 10);
+          this.hp = Math.min(this.maxHp, this.hp + 12);
           this.callout("倒した");
-          this.pop(x, y - 18, "親玉 +10");
+          this.pop(x, y - 18, "親玉 +12");
           this.startHitStop(560);
           this.wardPending = true;
           if (this.hasSprite && this.player) this.player.setTint(0xf8b500);
@@ -1008,7 +1036,7 @@ function bootArena() {
     finish(win) {
       if (this.ended) return;
       this.ended = true;
-      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 40;
+      const score = this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + (win ? 25 : 0) + this.bossDown * 55;
       const key = `bo-aibou:${mate.id}:${mode.id}`;
       let best = 0;
       try {
@@ -1137,7 +1165,16 @@ function bootArena() {
         if (this.hurtTick > 0 && this.player) {
           this.ward.x = this.player.x;
           this.ward.y = this.player.y;
-          if (this.hasSprite) this.player.setAlpha(0.5 + 0.45 * Math.abs(Math.sin(this.time.now / 70)));
+          this.wardHue = (this.wardHue + delta * 0.01) % NEON.length;
+          const col = NEON[Math.floor(this.wardHue) % NEON.length];
+          this.ward.setFillStyle(col, 0.1);
+          this.ward.setStrokeStyle(6, col, 1);
+          this.rippleAcc = (this.rippleAcc || 0) + delta;
+          if (this.rippleAcc > 380) {
+            this.rippleAcc = 0;
+            this.pulseRipple();
+          }
+          if (this.hasSprite) this.player.setAlpha(1);
         } else {
           this.ward.destroy();
           this.ward = null;
