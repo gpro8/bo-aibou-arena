@@ -82,6 +82,21 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   border: 1px solid var(--line);
   background: #12100e;
 }
+#raise-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(12, 11, 10, 0.72);
+}
+#raise-ov.hidden { display: none !important; }
+#raise-ov h1 { color: var(--gold); }
+#raise-ov .col { width: min(360px, 100%); }
 .col, .row { display: flex; gap: 10px; }
 .col { flex-direction: column; }
 .row { justify-content: space-between; flex-wrap: wrap; }

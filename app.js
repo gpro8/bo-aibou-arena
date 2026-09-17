@@ -74,7 +74,9 @@ function show(name) {
   }
   if (name !== "result") {
     const card = $("[data-flag-card]");
+    const ov = $("#raise-ov");
     if (card) card.classList.add("hidden");
+    if (ov) ov.classList.add("hidden");
   }
 }
 
@@ -327,30 +329,70 @@ function clickA(href, download) {
   a.remove();
 }
 
-function raiseFlag() {
+function cardPack() {
   const run = state.last;
-  if (!run || !state.card) return;
+  if (!run || !state.card) return null;
   const text = raiseText(run);
   const dataUrl = state.card.toDataURL("image/png");
   const bin = atob(dataUrl.split(",")[1]);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: "image/png" });
   const file = new File([bytes], "kakageru.png", { type: "image/png" });
-  const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  return {
+    text,
+    dataUrl,
+    blob,
+    file,
+    tweet: `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`,
+  };
+}
+
+function raiseMsg(s) {
+  const el = $("[data-raise-msg]");
+  if (el) el.textContent = s || "";
+}
+
+function raiseFlag() {
+  const pack = cardPack();
+  if (!pack) return;
   if (isCoarse() && navigator.share) {
     const payload =
-      navigator.canShare && navigator.canShare({ files: [file] })
-        ? { files: [file], text, title: "相棒あそび" }
-        : { text, url: PLAY_URL, title: "相棒あそび" };
+      navigator.canShare && navigator.canShare({ files: [pack.file] })
+        ? { files: [pack.file], text: pack.text, title: "相棒あそび" }
+        : { text: pack.text, url: PLAY_URL, title: "相棒あそび" };
     navigator.share(payload).catch((err) => {
       if (err && err.name === "AbortError") return;
-      clickA(dataUrl, "kakageru.png");
-      clickA(tweet);
+      const ov = $("#raise-ov");
+      if (ov) ov.classList.remove("hidden");
     });
     return;
   }
-  clickA(dataUrl, "kakageru.png");
-  clickA(tweet);
+  raiseMsg("");
+  const ov = $("#raise-ov");
+  if (ov) ov.classList.remove("hidden");
+}
+
+function raiseCopy() {
+  const pack = cardPack();
+  if (!pack) return;
+  clickA(pack.tweet);
+  const ok = navigator.clipboard && window.ClipboardItem;
+  if (!ok) {
+    raiseMsg("コピーできない。保存して添付");
+    return;
+  }
+  navigator.clipboard
+    .write([new ClipboardItem({ "image/png": pack.blob })])
+    .then(() => raiseMsg("コピーした。Xに貼る"))
+    .catch(() => raiseMsg("コピーできない。保存して添付"));
+}
+
+function raiseSave() {
+  const pack = cardPack();
+  if (!pack) return;
+  clickA(pack.dataUrl, "kakageru.png");
+  raiseMsg("保存した");
 }
 
 function renderSetup() {
@@ -1009,6 +1051,19 @@ async function main() {
     }
     if (ev.target.closest("[data-raise]")) {
       raiseFlag();
+      return;
+    }
+    if (ev.target.closest("[data-raise-copy]")) {
+      raiseCopy();
+      return;
+    }
+    if (ev.target.closest("[data-raise-save]")) {
+      raiseSave();
+      return;
+    }
+    if (ev.target.closest("[data-raise-close]")) {
+      const ov = $("#raise-ov");
+      if (ov) ov.classList.add("hidden");
       return;
     }
     if (ev.target.closest("[data-again]")) {
