@@ -1,4 +1,4 @@
-const VERSION = "0.4.16";
+const VERSION = "0.4.17";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -334,6 +334,8 @@ function raiseText(run) {
     `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
     "入場・参加無料",
     PLAY_URL,
+    "",
+    "#相棒あそび #BushiDAO",
   ].join("\n");
 }
 
