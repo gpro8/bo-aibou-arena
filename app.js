@@ -1,4 +1,4 @@
-const VERSION = "0.4.11";
+const VERSION = "0.4.12";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1125,7 +1125,7 @@ function bootArena() {
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
-      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど走る";
+      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       paintRec();
