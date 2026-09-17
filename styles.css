@@ -74,6 +74,14 @@ h1 { font-size: 28px; margin: 0; font-weight: 700; }
 h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 .blurb, .hint, .thanks { color: var(--muted); margin: 0; line-height: 1.6; }
 .thanks { color: var(--gold); font-size: 18px; }
+.flag-card {
+  width: 100%;
+  max-width: 360px;
+  align-self: center;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #12100e;
+}
 .col, .row { display: flex; gap: 10px; }
 .col { flex-direction: column; }
 .row { justify-content: space-between; flex-wrap: wrap; }

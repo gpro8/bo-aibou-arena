@@ -12,7 +12,7 @@ const STAGES = [
   { id: "yang", label: "陽", bg: 0xe8dcc8, foe: 0x4a2060 },
   { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
 ];
-const XP_COLOR = 0x7ecfff;
+const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -71,6 +71,10 @@ function show(name) {
     if (rotate) rotate.classList.add("hidden");
     if (stick) stick.classList.add("hidden");
     if (ov) ov.classList.add("hidden");
+  }
+  if (name !== "result") {
+    const card = $("[data-flag-card]");
+    if (card) card.classList.add("hidden");
   }
 }
 
@@ -228,6 +232,116 @@ function paintRec() {
       ? `${state.mate.name} · ${state.mode.label} ベスト ${n}`
       : `${state.mate.name} · この難易度の記録はまだない`;
   }
+}
+
+function loadImg(src) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+}
+
+function raiseText(run) {
+  return [
+    "相棒あそび",
+    `${run.name} ${run.win ? "生き延びた" : "やられた"}`,
+    `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
+    "入場・参加無料",
+    PLAY_URL,
+  ].join("\n");
+}
+
+async function paintFlagCard(run) {
+  const img = $("[data-flag-card]");
+  const c = document.createElement("canvas");
+  c.width = 1080;
+  c.height = 1350;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#12100e";
+  ctx.fillRect(0, 0, 1080, 1350);
+  ctx.strokeStyle = "#3a342c";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(36, 36, 1008, 1278);
+  ctx.strokeStyle = "#f8b500";
+  ctx.lineWidth = 16;
+  ctx.beginPath();
+  ctx.arc(540, 400, 210, 0, Math.PI * 2);
+  ctx.stroke();
+  const face = await loadImg(`art/${run.id}/front.png`);
+  if (face) {
+    const s = 340;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(540, 400, 176, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(face, 540 - s / 2, 400 - s / 2, s, s);
+    ctx.restore();
+  }
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#f8b500";
+  ctx.font = "700 28px sans-serif";
+  ctx.fillText("BushiDAO · 相棒あそび", 540, 120);
+  ctx.fillStyle = "#f3eadc";
+  ctx.font = "700 80px sans-serif";
+  ctx.fillText(run.win ? "生き延びた" : "やられた", 540, 710);
+  ctx.fillStyle = "#f8b500";
+  ctx.font = "700 48px sans-serif";
+  ctx.fillText(run.name, 540, 780);
+  ctx.fillStyle = "#f3eadc";
+  ctx.font = "600 36px sans-serif";
+  ctx.fillText(`倒 ${run.kills}   連 ${run.combo}   lv ${run.lv}`, 540, 860);
+  ctx.fillStyle = run.rec ? "#f8b500" : "#9a8f82";
+  ctx.font = "700 40px sans-serif";
+  ctx.fillText(run.rec ? `新記録 ${run.score}` : `記録 ${run.score}`, 540, 930);
+  ctx.fillStyle = "#9a8f82";
+  ctx.font = "500 28px sans-serif";
+  ctx.fillText("入場・参加無料", 540, 1180);
+  ctx.fillText("旗を掲げる", 540, 1230);
+  ctx.fillStyle = "#3a342c";
+  ctx.fillRect(980, 80, 8, 64);
+  ctx.fillStyle = "#f8b500";
+  ctx.beginPath();
+  ctx.moveTo(988, 80);
+  ctx.lineTo(1040, 100);
+  ctx.lineTo(988, 120);
+  ctx.closePath();
+  ctx.fill();
+  state.card = c;
+  if (img) {
+    img.src = c.toDataURL("image/png");
+    img.classList.remove("hidden");
+    img.alt = `${run.name} ${run.win ? "生き延びた" : "やられた"}`;
+  }
+}
+
+async function raiseFlag() {
+  const run = state.last;
+  if (!run) return;
+  if (!state.card) await paintFlagCard(run);
+  const text = raiseText(run);
+  const blob = await new Promise((res) => state.card.toBlob(res, "image/png"));
+  if (!blob) return;
+  const file = new File([blob], "kakageru.png", { type: "image/png" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], text, title: "相棒あそび" });
+      return;
+    }
+    if (navigator.share) {
+      await navigator.share({ text, url: PLAY_URL, title: "相棒あそび" });
+      return;
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "kakageru.png";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
 }
 
 function renderSetup() {
@@ -691,13 +805,23 @@ function bootArena() {
           /* guest device */
         }
       }
-      state.last = { win, name: mate.name, lv: this.lv, score };
+      state.last = {
+        win,
+        id: mate.id,
+        name: mate.name,
+        lv: this.lv,
+        score,
+        kills: this.kills,
+        combo: this.maxCombo,
+        rec,
+      };
       killGame();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど旗を";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       paintRec();
+      paintFlagCard(state.last);
       show("result");
     }
     update(_t, delta) {
@@ -872,6 +996,10 @@ async function main() {
     if (ev.target.closest("[data-quit]")) {
       killGame();
       show("title");
+      return;
+    }
+    if (ev.target.closest("[data-raise]")) {
+      raiseFlag();
       return;
     }
     if (ev.target.closest("[data-again]")) {
