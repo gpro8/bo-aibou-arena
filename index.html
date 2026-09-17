@@ -36,6 +36,7 @@
         <li>モコプー ふわふわ：まわりを溶かす。自分では回復しない</li>
         <li>心の回復は2つ。lvアップ / 親玉を倒したとき（氷青）。赤はダメージ</li>
         <li>半ばに影の親玉。強い。寄るな</li>
+        <li>「来るぞ」は敵が一気に増える合図</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>記録は端末に残る。もういちど</li>
       </ul>
@@ -80,14 +81,13 @@
         <p class="hint">横にしてから走る</p>
         <p class="hint">全画面はホーム画面に追加</p>
       </div>
-    </section>
-
-    <section class="screen hidden" data-screen="pause">
-      <h1>一時停止</h1>
-      <p class="hint">スペースでつづける</p>
-      <div class="col">
-        <button type="button" class="btn gold" data-resume>つづける</button>
-        <button type="button" class="btn ghost" data-quit>やめる</button>
+      <div id="pause-ov" class="hidden">
+        <h1>一時停止</h1>
+        <p class="hint">スペースでつづける</p>
+        <div class="col">
+          <button type="button" class="btn gold" data-resume>つづける</button>
+          <button type="button" class="btn ghost" data-quit>やめる</button>
+        </div>
       </div>
     </section>
 

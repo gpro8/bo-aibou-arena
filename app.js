@@ -59,7 +59,7 @@ const state = {
 
 function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
-  document.body.classList.toggle("playing", name === "play" || name === "pause");
+  document.body.classList.toggle("playing", name === "play");
   if (name === "title" || name === "setup") paintRec();
   if (name !== "play") {
     state.pendingPlay = false;
@@ -67,8 +67,10 @@ function show(name) {
     exitFullscreen();
     const rotate = $("#rotate");
     const stick = $("#stick");
+    const ov = $("#pause-ov");
     if (rotate) rotate.classList.add("hidden");
     if (stick) stick.classList.add("hidden");
+    if (ov) ov.classList.add("hidden");
   }
 }
 
@@ -658,7 +660,7 @@ function bootArena() {
         this.waveAcc += 1;
         if (this.paceHold > 0) this.paceHold -= 1;
         this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1);
-        if (this.waveAcc === 20) this.callout("寄せ");
+        if (this.waveAcc === 20) this.callout("来るぞ");
         if (this.waveAcc >= 22) {
           this.waveAcc = 0;
           this.paceHold = 3;
@@ -721,14 +723,18 @@ function pausePlay() {
   const play = $("[data-screen='play']");
   if (!play || play.classList.contains("hidden")) return;
   if ($("#rotate") && !$("#rotate").classList.contains("hidden")) return;
+  const ov = $("#pause-ov");
+  if (ov && !ov.classList.contains("hidden")) return;
   if (state.game) state.game.scene.pause("arena");
-  show("pause");
+  if (ov) ov.classList.remove("hidden");
 }
 
 function resumePlay() {
-  const pause = $("[data-screen='pause']");
-  if (!pause || pause.classList.contains("hidden")) return;
-  show("play");
+  const ov = $("#pause-ov");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  tryFullscreen();
+  if (state.game) state.game.scene.resume("arena");
   syncPlayGate();
 }
 
@@ -766,9 +772,9 @@ async function main() {
     if (ev.repeat) return;
     ev.preventDefault();
     const play = $("[data-screen='play']");
-    const pause = $("[data-screen='pause']");
-    if (play && !play.classList.contains("hidden")) pausePlay();
-    else if (pause && !pause.classList.contains("hidden")) resumePlay();
+    const ov = $("#pause-ov");
+    if (ov && !ov.classList.contains("hidden")) resumePlay();
+    else if (play && !play.classList.contains("hidden")) pausePlay();
   });
 
   document.body.addEventListener("click", (ev) => {

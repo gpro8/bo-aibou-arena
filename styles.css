@@ -29,6 +29,26 @@ html:-webkit-full-screen .play,
 html:-webkit-full-screen .play * {
   cursor: none;
 }
+html:fullscreen #pause-ov,
+html:fullscreen #pause-ov *,
+html:-webkit-full-screen #pause-ov,
+html:-webkit-full-screen #pause-ov * {
+  cursor: auto;
+}
+#pause-ov {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(12, 11, 10, 0.58);
+  pointer-events: auto;
+}
+#pause-ov.hidden { display: none !important; }
+#pause-ov h1 { color: var(--gold); }
 body.playing {
   overflow: hidden;
   height: 100dvh;
