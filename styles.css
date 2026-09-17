@@ -271,7 +271,6 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 #fx.dmg { background: rgba(160, 30, 30, 0.32); animation: fxpop 320ms ease-out; }
 #fx.heal { background: rgba(126, 207, 255, 0.28); animation: fxpop 320ms ease-out; }
 #fx.stop { background: rgba(248, 181, 0, 0.42); }
-#fx.hajiki { background: rgba(248, 181, 0, 0.34); animation: fxpop 180ms ease-out; }
 #fx.graze { background: rgba(255, 244, 163, 0.22); animation: fxpop 200ms ease-out; }
 #hud [data-hud-graze],
 #hud [data-hud-score] { color: var(--gold); }

@@ -1,4 +1,4 @@
-const VERSION = "0.4.14";
+const VERSION = "0.4.15";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -382,7 +382,7 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
-  ctx.fillText("𝕏でドヤる", 540, 1230);
+  ctx.fillText("栄誉を讃える", 540, 1230);
   ctx.fillStyle = "#3a342c";
   ctx.fillRect(980, 80, 8, 64);
   ctx.fillStyle = "#f8b500";
@@ -673,7 +673,7 @@ function bootArena() {
       this.prevHp = this.hp;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
-      if (hud.graze) hud.graze.textContent = this.grazeStreak > 0 ? `かすり ${this.grazeStreak}` : "";
+      if (hud.graze) hud.graze.textContent = this.grazeStreak > 0 ? `かわし ${this.grazeStreak}` : "";
       if (hud.score) hud.score.textContent = `記録 ${this.liveScore()}`;
       const tnow = this.time ? this.time.now : 0;
       const chip = $("[data-buffchip]");
@@ -702,26 +702,33 @@ function bootArena() {
       return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
     }
     hajikiFoe(f) {
-      if (!f || !f.active) return;
-      const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
-      f.x += Math.cos(ang) * 18;
-      f.y += Math.sin(ang) * 18;
-      if (f.hajiki) return;
+      if (!f || !f.active || f.hajiki) return;
       f.hajiki = true;
-      this.pop(f.x, f.y - 10, "弾き", "#f8b500");
-      f.setTint(0xf8b500);
-      this.time.delayedCall(160, () => {
+      const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
+      const nx = f.x + Math.cos(ang) * 150;
+      const ny = f.y + Math.sin(ang) * 150;
+      this.pop(f.x, f.y - 12, "弾き", "#fff4a3");
+      const burst = this.add.circle(f.x, f.y, 12, 0xffffff, 0.45);
+      burst.setStrokeStyle(3, 0xf8b500, 0.95);
+      burst.setDepth(8);
+      this.tweens.add({
+        targets: burst,
+        scale: 2.6,
+        alpha: 0,
+        duration: 240,
+        onComplete: () => burst.destroy(),
+      });
+      this.tweens.add({
+        targets: f,
+        x: nx,
+        y: ny,
+        duration: 180,
+        ease: "Cubic.easeOut",
+      });
+      f.setTint(0xffffff);
+      this.time.delayedCall(140, () => {
         if (f.active) f.clearTint();
       });
-      if (this.cameras && this.cameras.main) this.cameras.main.flash(80, 248, 181, 0, false);
-      const fx = $("#fx");
-      if (fx) {
-        fx.className = "hajiki";
-        void fx.offsetWidth;
-        setTimeout(() => {
-          if (fx.className === "hajiki") fx.className = "";
-        }, 180);
-      }
       buzz([18, 20, 28]);
     }
     callout(msg) {
@@ -1327,7 +1334,7 @@ function bootArena() {
           this.graze += 1;
           const pts = 2 * this.grazeStreak;
           this.grazeScore += pts;
-          this.pop(this.player.x, this.player.y - 28, `かすり +${pts}`, "#fff4a3");
+          this.pop(this.player.x, this.player.y - 28, `かわし +${pts}`, "#fff4a3");
           buzz([12, 16, 24]);
           const fx = $("#fx");
           if (fx) {
