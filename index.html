@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.json">
   <title>相棒あそび · BushiDAO</title>
   <meta name="description" content="BOの相棒と走る。入場・参加無料。">
-  <link rel="stylesheet" href="styles.css?v=0.4.9">
+  <link rel="stylesheet" href="styles.css?v=0.4.10">
 </head>
 <body>
   <div id="app">
@@ -43,7 +43,7 @@
         <li>「来るぞ」は敵が一気に増える合図</li>
         <li>終盤は敵が増える</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
-        <li>結果で掲げる。誉。金銭は出ない</li>
+        <li>結果はXでドヤる。誉。金銭は出ない</li>
       </ul>
       <button type="button" class="btn gold" data-go="title">もどる</button>
     </section>
@@ -117,13 +117,13 @@
         <p class="hint" data-result-line></p>
         <p class="hint" data-result-rec></p>
         <div class="col">
-          <button type="button" class="btn gold" data-raise>掲げる</button>
+          <button type="button" class="btn gold" data-raise>Xでドヤる</button>
           <button type="button" class="btn gold" data-again>もういちど</button>
           <button type="button" class="btn ghost" data-go="title">はじめへ</button>
         </div>
       </div>
       <div id="raise-ov" class="hidden">
-        <h1>掲げる</h1>
+        <h1>Xでドヤる</h1>
         <p class="hint">Xは画像を自動では付けない。コピーして貼る（⌘V / Ctrl+V）</p>
         <p class="hint" data-raise-msg></p>
         <div class="col">
@@ -135,6 +135,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.9"></script>
+  <script src="app.js?v=0.4.10"></script>
 </body>
 </html>
