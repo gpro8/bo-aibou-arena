@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.json">
   <title>相棒あそび · BushiDAO</title>
   <meta name="description" content="BOの相棒と走る。入場・参加無料。">
-  <link rel="stylesheet" href="styles.css?v=0.4.1">
+  <link rel="stylesheet" href="styles.css?v=0.4.2">
 </head>
 <body>
   <div id="app">
@@ -31,7 +31,7 @@
     <section class="screen hidden" data-screen="how">
       <h1>遊び方</h1>
       <ul class="how">
-        <li>画面を横に。左下で動かす（PCはWASD）。攻撃は相棒</li>
+        <li>走る前に🕹️左か右（PCはWASD）。攻撃は相棒</li>
         <li>全画面はホーム画面に追加（Androidは走るで全画面）</li>
         <li>スミ ネオンスパーク：当たったらそこで座る。外れは奥で座る</li>
         <li>モコプー ふわふわ：まわりを溶かす。自分では回復しない</li>
@@ -54,10 +54,18 @@
       <div class="mates" data-mates></div>
       <p class="hint" data-mate-blurb></p>
       <p class="hint" data-setup-rec></p>
-      <p class="hint">走るときは画面を横に。左下で動かす</p>
+      <p class="hint">走るときは画面を横に</p>
       <div class="row">
         <button type="button" class="btn ghost" data-go="title">もどる</button>
         <button type="button" class="btn gold" data-run>走る</button>
+      </div>
+      <div id="stick-ov" class="hidden">
+        <h1>🕹️</h1>
+        <p class="hint">スティック</p>
+        <div class="row">
+          <button type="button" class="btn gold" data-stick-side="left">左</button>
+          <button type="button" class="btn ghost" data-stick-side="right">右</button>
+        </div>
       </div>
     </section>
 
@@ -119,6 +127,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.1"></script>
+  <script src="app.js?v=0.4.2"></script>
 </body>
 </html>

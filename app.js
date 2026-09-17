@@ -1,4 +1,4 @@
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -55,6 +55,7 @@ const state = {
   game: null,
   last: null,
   stick: { x: 0, y: 0 },
+  stickSide: "left",
   pendingPlay: false,
 };
 
@@ -84,6 +85,8 @@ function show(name) {
     if (result) result.classList.add("hidden");
     if (raise) raise.classList.add("hidden");
     if (boss) boss.classList.add("hidden");
+    const stickOv = $("#stick-ov");
+    if (stickOv) stickOv.classList.add("hidden");
   }
 }
 
@@ -104,6 +107,7 @@ function clearStick() {
 
 function enterPlay() {
   killGame();
+  applyStickSide();
   show("play");
   state.pendingPlay = true;
   tryFullscreen();
@@ -229,6 +233,39 @@ function loadBest() {
 
 function recKey(mateId, modeId) {
   return `bo-aibou:${mateId}:${modeId}`;
+}
+
+function loadStickSide() {
+  try {
+    const s = localStorage.getItem("bo-aibou-stick");
+    if (s === "right" || s === "left") state.stickSide = s;
+  } catch {
+    /* guest */
+  }
+}
+
+function saveStickSide(side) {
+  state.stickSide = side === "right" ? "right" : "left";
+  try {
+    localStorage.setItem("bo-aibou-stick", state.stickSide);
+  } catch {
+    /* guest */
+  }
+}
+
+function applyStickSide() {
+  const stick = $("#stick");
+  const boss = $("#bosshp");
+  if (stick) stick.classList.toggle("right", state.stickSide === "right");
+  if (boss) boss.classList.toggle("swap", state.stickSide === "right");
+}
+
+function paintStickOv() {
+  $$("[data-stick-side]").forEach((b) => {
+    const on = b.dataset.stickSide === state.stickSide;
+    b.classList.toggle("gold", on);
+    b.classList.toggle("ghost", !on);
+  });
 }
 
 function paintRec() {
@@ -1031,6 +1068,7 @@ async function main() {
   state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
   const ver = $("[data-ver]");
   if (ver) ver.textContent = `v${VERSION}`;
+  loadStickSide();
   renderSetup();
 
   bindStick();
@@ -1091,6 +1129,20 @@ async function main() {
       return;
     }
     if (ev.target.closest("[data-run]")) {
+      if (isCoarse()) {
+        paintStickOv();
+        const ov = $("#stick-ov");
+        if (ov) ov.classList.remove("hidden");
+        return;
+      }
+      enterPlay();
+      return;
+    }
+    const side = ev.target.closest("[data-stick-side]");
+    if (side) {
+      saveStickSide(side.dataset.stickSide);
+      const ov = $("#stick-ov");
+      if (ov) ov.classList.add("hidden");
       enterPlay();
       return;
     }

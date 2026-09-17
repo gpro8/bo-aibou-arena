@@ -288,6 +288,29 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   z-index: 4;
   touch-action: none;
 }
+#stick.right {
+  left: auto;
+  right: calc(12px + var(--safe-r));
+}
+#bosshp.swap {
+  right: auto;
+  left: calc(12px + var(--safe-l));
+}
+#stick-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(12, 11, 10, 0.72);
+}
+#stick-ov.hidden { display: none !important; }
+#stick-ov h1 { font-size: 40px; }
+#stick-ov .row { width: min(280px, 90%); }
 #stick i {
   position: absolute;
   width: 48px;
