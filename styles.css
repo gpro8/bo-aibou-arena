@@ -80,6 +80,7 @@ html:-webkit-full-screen #raise-ov * {
   color: var(--gold);
 }
 #bosshp.hidden { display: none !important; }
+#bosshp.hit { box-shadow: 0 0 16px #f8b500; }
 #bosshp .hpbar { width: 100%; flex: 1 1 auto; }
 .hpbar.boss i { background: linear-gradient(90deg, #c94a4a, #f8b500); }
 body.playing {

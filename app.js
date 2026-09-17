@@ -1,4 +1,4 @@
-const VERSION = "0.4.2";
+const VERSION = "0.4.3";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -565,6 +565,7 @@ function bootArena() {
       this.lastKill = 0;
       this.bossDone = false;
       this.bossDown = 0;
+      this.hitStop = 0;
       this.prevHp = this.hp;
       this.healWhy = "";
       this.paintHud();
@@ -707,8 +708,8 @@ function bootArena() {
       gem.body.setCircle(10, 4, 5);
       this.tweens.add({
         targets: gem,
-        y: y - 5,
-        angle: 8,
+        scale: 1.14,
+        angle: 10,
         duration: 380,
         yoyo: true,
         repeat: -1,
@@ -746,6 +747,14 @@ function bootArena() {
       if (!foe.active) return;
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg);
+      if (foe.boss && foe.hp > 0) {
+        const bar = $("#bosshp");
+        if (bar) {
+          bar.classList.remove("hit");
+          void bar.offsetWidth;
+          bar.classList.add("hit");
+        }
+      }
       if (foe.hp <= 0) {
         const boss = foe.boss;
         const x = foe.x;
@@ -775,6 +784,14 @@ function bootArena() {
           this.hp = Math.min(this.maxHp, this.hp + 10);
           this.callout("旗");
           this.pop(x, y - 18, "親玉 +10");
+          this.hitStop = 90;
+          this.hurtTick = 1100;
+          if (this.hasSprite && this.player) {
+            this.player.setTint(0xf8b500);
+            this.time.delayedCall(220, () => {
+              if (this.player && this.player.active) this.player.clearTint();
+            });
+          }
           const bar = $("#bosshp");
           if (bar) bar.classList.add("hidden");
         }
@@ -935,6 +952,11 @@ function bootArena() {
     }
     update(_t, delta) {
       if (this.ended) return;
+      if (this.hitStop > 0) {
+        this.hitStop -= delta;
+        this.paintHud();
+        return;
+      }
       this.move(delta);
       if (k.kind === "spark") this.tickSparks(delta);
       this.secAcc += delta;
@@ -979,6 +1001,14 @@ function bootArena() {
           this.hp -= f.boss ? 10 : 2;
           this.hurtTick = f.boss ? 480 : 650;
           if (this.hp <= 0) this.finish(false);
+        }
+      });
+      this.gems.children.iterate((g) => {
+        if (!g || !g.active || !this.player) return;
+        const d = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y);
+        if (d < 90 && d > 6) {
+          g.x += (this.player.x - g.x) * 0.2;
+          g.y += (this.player.y - g.y) * 0.2;
         }
       });
       let boss = null;
