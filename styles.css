@@ -121,26 +121,55 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   text-shadow: 0 1px 2px #000, 0 0 8px #000;
   pointer-events: none;
 }
-#hud > span {
+#hud > span,
+#hud .hpchip {
   background: rgba(12, 11, 10, 0.55);
   border: 1px solid rgba(248, 181, 0, 0.4);
   border-radius: 999px;
   padding: 3px 8px;
 }
+#hud .hpchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 #hud .btn { pointer-events: auto; }
 #hud [data-hud-skill],
 #hud [data-hud-combo] { color: var(--gold); }
 .hpbar {
-  width: 64px;
-  height: 8px;
-  background: #3a342c;
+  width: 92px;
+  height: 12px;
+  background: #2a2218;
   border-radius: 99px;
   overflow: hidden;
   display: inline-block;
-  vertical-align: middle;
-  border: 1px solid rgba(248, 181, 0, 0.55);
+  flex: 0 0 92px;
+  border: 1px solid rgba(248, 181, 0, 0.7);
+  box-shadow: inset 0 0 0 1px #1a1408;
 }
-.hpbar i { display: block; height: 100%; width: 100%; background: #e07a7a; }
+.hpbar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #c94a4a, #e07a7a);
+  transform-origin: left center;
+}
+.hpbar.dmg { box-shadow: 0 0 12px #e07a7a; }
+.hpbar.heal i { background: linear-gradient(90deg, #c8862a, #f8b500); }
+.hpbar.heal { box-shadow: 0 0 12px #f8b500; }
+#fx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+}
+#fx.dmg { background: rgba(160, 30, 30, 0.32); animation: fxpop 320ms ease-out; }
+#fx.heal { background: rgba(248, 181, 0, 0.22); animation: fxpop 320ms ease-out; }
+@keyframes fxpop {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
 #arena {
   position: absolute;
   inset: 0;

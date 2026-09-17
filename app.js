@@ -349,12 +349,43 @@ function bootArena() {
       this.maxCombo = 0;
       this.lastKill = 0;
       this.bossDone = false;
+      this.prevHp = this.hp;
       this.paintHud();
+    }
+    pulseHp(kind, amt) {
+      const bar = $(".hpbar");
+      const fx = $("#fx");
+      if (bar) {
+        bar.classList.remove("dmg", "heal");
+        void bar.offsetWidth;
+        bar.classList.add(kind);
+        setTimeout(() => bar.classList.remove("dmg", "heal"), 340);
+      }
+      if (fx) {
+        fx.className = kind;
+        void fx.offsetWidth;
+        setTimeout(() => {
+          fx.className = "";
+        }, 320);
+      }
+      if (this.player) {
+        const n = kind === "heal" ? `+${Math.ceil(amt)}` : `-${Math.ceil(amt)}`;
+        this.pop(this.player.x, this.player.y - 24, n);
+        if (this.hasSprite) {
+          this.player.setTint(kind === "heal" ? 0xf8b500 : 0xff4a4a);
+          this.time.delayedCall(180, () => this.player.clearTint());
+        }
+      }
     }
     paintHud() {
       const now = Math.max(0, Math.ceil(this.hp));
       hud.hp.textContent = `心 ${now}/${this.maxHp}`;
       if (hud.hpbar) hud.hpbar.style.width = `${Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100))}%`;
+      if (this.prevHp != null) {
+        if (this.hp < this.prevHp - 0.05) this.pulseHp("dmg", this.prevHp - this.hp);
+        else if (this.hp > this.prevHp + 0.05) this.pulseHp("heal", this.hp - this.prevHp);
+      }
+      this.prevHp = this.hp;
       hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
       hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
@@ -467,9 +498,9 @@ function bootArena() {
       const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 12, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
-      spark.vx = dir * 0.32;
-      spark.travel = 260;
-      spark.life = 1100;
+      spark.vx = dir * 0.52;
+      spark.travel = 520;
+      spark.life = 1500;
       spark.tick = 0;
       spark.hue = 0;
       this.sparks.push(spark);
