@@ -298,6 +298,7 @@ function bootArena() {
       this.hasSprite = this.textures.exists("mate");
       this.face = 1;
       this.cameras.main.setBackgroundColor(stage.bg);
+      this.bakeMarks();
       const w = this.scale.width;
       const h = this.scale.height;
       if (this.hasSprite) {
@@ -428,6 +429,43 @@ function bootArena() {
     skillDmg() {
       return k.dmg + (this.lv - 1) * 2;
     }
+    bakeMarks() {
+      const diamond = (g, cx, cy, s, fill, stroke) => {
+        g.fillStyle(fill, 1);
+        g.beginPath();
+        g.moveTo(cx, cy - s);
+        g.lineTo(cx + s, cy);
+        g.lineTo(cx, cy + s);
+        g.lineTo(cx - s, cy);
+        g.closePath();
+        g.fillPath();
+        if (stroke) {
+          g.lineStyle(2, stroke, 0.95);
+          g.strokePath();
+        }
+      };
+      const foe = this.make.graphics({ add: false });
+      diamond(foe, 16, 16, 13, stage.foe, 0x1b1916);
+      foe.generateTexture("mark-foe", 32, 32);
+      foe.destroy();
+      const boss = this.make.graphics({ add: false });
+      boss.fillStyle(0x1a1018, 1);
+      boss.fillCircle(32, 32, 28);
+      boss.lineStyle(5, 0xf8b500, 1);
+      boss.strokeCircle(32, 32, 26);
+      diamond(boss, 32, 32, 14, 0x4a2060, 0x1b1916);
+      boss.generateTexture("mark-boss", 64, 64);
+      boss.destroy();
+      const flag = this.make.graphics({ add: false });
+      flag.fillStyle(0x3a342c, 1);
+      flag.fillRect(7, 4, 3, 24);
+      flag.fillStyle(0xf8b500, 1);
+      flag.fillTriangle(10, 4, 26, 12, 10, 20);
+      flag.lineStyle(1, 0xfff4a3, 0.85);
+      flag.strokeTriangle(10, 4, 26, 12, 10, 20);
+      flag.generateTexture("mark-flag", 28, 30);
+      flag.destroy();
+    }
     spawn(kind) {
       const w = this.scale.width;
       const h = this.scale.height;
@@ -435,29 +473,42 @@ function bootArena() {
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
       const boss = kind === "boss";
-      const r = boss ? 28 : 12;
-      const foe = this.add.circle(x, y, r, stage.foe);
-      this.physics.add.existing(foe);
-      foe.body.setCircle(r);
+      const r = boss ? 28 : 14;
+      const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
+      foe.setDepth(4);
+      foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
       foe.hp = boss ? 170 + this.lv * 10 : 20 + (this.lv - 1) * 2;
       foe.boss = boss;
       foe.spd = boss ? 80 : 70 + this.lv * 8;
-      if (boss) foe.setStrokeStyle(4, 0xf8b500, 1);
+      this.tweens.add({
+        targets: foe,
+        angle: boss ? -360 : 360,
+        duration: boss ? 14000 : 7000,
+        repeat: -1,
+      });
       this.foes.add(foe);
     }
     dropGem(x, y) {
-      const gem = this.add.circle(x, y, 8, XP_COLOR);
-      this.physics.add.existing(gem);
-      gem.body.setCircle(8);
-      gem.setStrokeStyle(2, 0xffffff, 0.95);
+      const gem = this.physics.add.sprite(x, y, "mark-flag");
+      gem.setDepth(6);
+      gem.body.setCircle(10, 4, 5);
+      this.tweens.add({
+        targets: gem,
+        y: y - 5,
+        angle: 8,
+        duration: 380,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
       this.gems.add(gem);
     }
     flash(foe) {
       if (!foe.active) return;
-      foe.setFillStyle(NEON[Phaser.Math.Between(0, NEON.length - 1)]);
+      foe.setTint(NEON[Phaser.Math.Between(0, NEON.length - 1)]);
       if (foe.body) foe.body.velocity.scale(0.2);
       this.time.delayedCall(140, () => {
-        if (foe.active) foe.setFillStyle(stage.foe);
+        if (foe.active) foe.clearTint();
       });
     }
     pop(x, y, n, color) {
