@@ -160,7 +160,10 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   background: linear-gradient(90deg, #c94a4a, #e07a7a);
   transform-origin: left center;
 }
-.hpbar.dmg { box-shadow: 0 0 12px #e07a7a; }
+.hpbar.low i { animation: hpblink 0.55s ease-in-out infinite; }
+@keyframes hpblink {
+  50% { opacity: 0.35; }
+}
 .hpbar.heal i { background: linear-gradient(90deg, #2f9e8a, #7ecfff); }
 .hpbar.heal { box-shadow: 0 0 12px #7ecfff; }
 #fx {

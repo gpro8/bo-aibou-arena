@@ -379,6 +379,7 @@ function bootArena() {
         if (this.hasSprite) {
           this.player.setTint(kind === "heal" ? 0x7ecfff : 0xff4a4a);
           this.time.delayedCall(180, () => this.player.clearTint());
+          if (kind === "dmg" && this.cameras && this.cameras.main) this.cameras.main.shake(110, 0.008);
         }
         this.healWhy = "";
       }
@@ -386,7 +387,11 @@ function bootArena() {
     paintHud() {
       const now = Math.max(0, Math.ceil(this.hp));
       hud.hp.textContent = `心 ${now}/${this.maxHp}`;
-      if (hud.hpbar) hud.hpbar.style.width = `${Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100))}%`;
+      if (hud.hpbar) {
+        hud.hpbar.style.width = `${Math.max(0, Math.min(100, (this.hp / this.maxHp) * 100))}%`;
+        const wrap = $(".hpbar");
+        if (wrap) wrap.classList.toggle("low", this.hp / this.maxHp < 0.3);
+      }
       if (this.prevHp != null) {
         if (this.hp < this.prevHp - 0.05) this.pulseHp("dmg", this.prevHp - this.hp);
         else if (this.hp > this.prevHp + 0.05) this.pulseHp("heal", this.hp - this.prevHp);
@@ -397,6 +402,26 @@ function bootArena() {
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
+    }
+    callout(msg) {
+      const w = this.scale.width / 2;
+      const h = this.scale.height / 2;
+      const t = this.add.text(w, h, msg, {
+        fontFamily: "sans-serif",
+        fontSize: "28px",
+        color: "#f8b500",
+        stroke: "#1a1408",
+        strokeThickness: 6,
+      });
+      t.setOrigin(0.5);
+      t.setDepth(30);
+      this.tweens.add({
+        targets: t,
+        y: h - 36,
+        alpha: 0,
+        duration: 900,
+        onComplete: () => t.destroy(),
+      });
     }
     skillDmg() {
       return k.dmg + (this.lv - 1) * 2;
@@ -633,6 +658,7 @@ function bootArena() {
         this.waveAcc += 1;
         if (this.paceHold > 0) this.paceHold -= 1;
         this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1);
+        if (this.waveAcc === 20) this.callout("寄せ");
         if (this.waveAcc >= 22) {
           this.waveAcc = 0;
           this.paceHold = 3;
@@ -641,6 +667,8 @@ function bootArena() {
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
           this.spawn("boss");
+          this.callout("影の親玉");
+          this.cameras.main.shake(220, 0.012);
         }
         if (this.time.now - this.lastKill > 1600) this.combo = 0;
         if (this.left <= 0) this.finish(true);
@@ -689,6 +717,21 @@ function bootArena() {
   });
 }
 
+function pausePlay() {
+  const play = $("[data-screen='play']");
+  if (!play || play.classList.contains("hidden")) return;
+  if ($("#rotate") && !$("#rotate").classList.contains("hidden")) return;
+  if (state.game) state.game.scene.pause("arena");
+  show("pause");
+}
+
+function resumePlay() {
+  const pause = $("[data-screen='pause']");
+  if (!pause || pause.classList.contains("hidden")) return;
+  show("play");
+  syncPlayGate();
+}
+
 function killGame() {
   if (state.game) {
     state.game.destroy(true);
@@ -717,6 +760,16 @@ async function main() {
     },
     { passive: false }
   );
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.code !== "Space" && ev.code !== "KeyP") return;
+    if (ev.repeat) return;
+    ev.preventDefault();
+    const play = $("[data-screen='play']");
+    const pause = $("[data-screen='pause']");
+    if (play && !play.classList.contains("hidden")) pausePlay();
+    else if (pause && !pause.classList.contains("hidden")) resumePlay();
+  });
 
   document.body.addEventListener("click", (ev) => {
     const go = ev.target.closest("[data-go]");
@@ -752,13 +805,11 @@ async function main() {
       return;
     }
     if (ev.target.closest("[data-pause]")) {
-      if (state.game) state.game.scene.pause("arena");
-      show("pause");
+      pausePlay();
       return;
     }
     if (ev.target.closest("[data-resume]")) {
-      show("play");
-      syncPlayGate();
+      resumePlay();
       return;
     }
     if (ev.target.closest("[data-quit]")) {
