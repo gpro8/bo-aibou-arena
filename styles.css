@@ -101,17 +101,24 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   z-index: 2;
   background: #0c0b0a;
   gap: 0;
+  display: block;
 }
 #hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 10px;
   align-items: center;
-  padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 8px calc(12px + var(--safe-l));
-  background: #0c0b0a;
+  padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 10px calc(12px + var(--safe-l));
+  background: linear-gradient(to bottom, rgba(12, 11, 10, 0.72), rgba(12, 11, 10, 0));
   font-size: 12px;
-  flex: 0 0 auto;
+  pointer-events: none;
 }
+#hud .btn { pointer-events: auto; }
 #hud [data-hud-skill],
 #hud [data-hud-combo] { color: var(--gold); }
 .hpbar {
@@ -125,9 +132,10 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 }
 .hpbar i { display: block; height: 100%; width: 100%; background: #e07a7a; }
 #arena {
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
   background: #000;
   touch-action: none;
 }
@@ -139,22 +147,22 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 }
 #stick {
   position: absolute;
-  left: calc(16px + var(--safe-l));
-  bottom: calc(16px + var(--safe-b));
-  width: 128px;
-  height: 128px;
+  left: calc(12px + var(--safe-l));
+  bottom: calc(12px + var(--safe-b));
+  width: 118px;
+  height: 118px;
   border-radius: 50%;
-  border: 2px solid rgba(248, 181, 0, 0.5);
-  background: rgba(12, 11, 10, 0.28);
+  border: 1.5px solid rgba(248, 181, 0, 0.28);
+  background: rgba(243, 234, 220, 0.08);
   z-index: 4;
   touch-action: none;
 }
 #stick i {
   position: absolute;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: rgba(248, 181, 0, 0.88);
+  background: rgba(248, 181, 0, 0.42);
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);

@@ -588,7 +588,7 @@ function bootArena() {
     render: { antialias: true, roundPixels: true },
     input: { activePointers: 3 },
     scale: {
-      mode: Phaser.Scale.FIT,
+      mode: Phaser.Scale.ENVELOP,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       expandParent: false,
     },
