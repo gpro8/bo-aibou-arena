@@ -1,3 +1,4 @@
+const VERSION = "0.4.1";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -160,7 +161,7 @@ function syncPlayGate() {
   if (coarse && !land) {
     rotate.classList.remove("hidden");
     stickEl.classList.add("hidden");
-    if (state.game) state.game.scene.pause("arena");
+    if (state.game) freezeScene();
     return;
   }
   rotate.classList.add("hidden");
@@ -170,7 +171,9 @@ function syncPlayGate() {
     state.pendingPlay = false;
     bootArena();
   } else if (state.game) {
-    state.game.scene.resume("arena");
+    if ($("#result-ov") && !$("#result-ov").classList.contains("hidden")) return;
+    if ($("#pause-ov") && !$("#pause-ov").classList.contains("hidden")) return;
+    thawScene();
     state.game.scale.refresh();
   }
 }
@@ -881,7 +884,7 @@ function bootArena() {
         combo: this.maxCombo,
         rec,
       };
-      if (state.game) state.game.scene.pause("arena");
+      if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど旗を";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
@@ -973,6 +976,26 @@ function bootArena() {
   });
 }
 
+function freezeScene() {
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (!sc) return;
+  if (sc.physics && sc.physics.world) sc.physics.world.pause();
+  if (sc.tweens) sc.tweens.pauseAll();
+  if (sc.anims) sc.anims.pauseAll();
+  sc.time.paused = true;
+  if (!sc.scene.isPaused()) sc.scene.pause();
+}
+
+function thawScene() {
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (!sc) return;
+  sc.time.paused = false;
+  if (sc.physics && sc.physics.world) sc.physics.world.resume();
+  if (sc.tweens) sc.tweens.resumeAll();
+  if (sc.anims) sc.anims.resumeAll();
+  if (sc.scene.isPaused()) sc.scene.resume();
+}
+
 function pausePlay() {
   const play = $("[data-screen='play']");
   if (!play || play.classList.contains("hidden")) return;
@@ -981,7 +1004,7 @@ function pausePlay() {
   if ($("#raise-ov") && !$("#raise-ov").classList.contains("hidden")) return;
   const ov = $("#pause-ov");
   if (ov && !ov.classList.contains("hidden")) return;
-  if (state.game) state.game.scene.pause("arena");
+  if (state.game) freezeScene();
   if (ov) ov.classList.remove("hidden");
 }
 
@@ -990,7 +1013,7 @@ function resumePlay() {
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
   tryFullscreen();
-  if (state.game) state.game.scene.resume("arena");
+  thawScene();
   syncPlayGate();
 }
 
@@ -1003,9 +1026,11 @@ function killGame() {
 }
 
 async function main() {
-  const res = await fetch("./data/entries.json");
+  const res = await fetch(`./data/entries.json?v=${VERSION}`);
   state.data = await res.json();
   state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
+  const ver = $("[data-ver]");
+  if (ver) ver.textContent = `v${VERSION}`;
   renderSetup();
 
   bindStick();
