@@ -1,4 +1,4 @@
-const VERSION = "0.4.18";
+const VERSION = "0.4.19";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
