@@ -1,8 +1,9 @@
-const VERSION = "0.4.17";
+const VERSION = "0.4.18";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
   mokopu: "art/mokopu/sheet.png",
+  mitsumaru: "art/mitsumaru/sheet.png",
 };
 
 const MODES = [
@@ -40,6 +41,17 @@ function kit(e) {
       skill: "ネオンスパーク",
       kind: "spark",
       dmg: 6,
+    };
+  }
+  if (e.id === "mitsumaru") {
+    return {
+      color: 0xb44dff,
+      hp: 34,
+      speed: 185,
+      rate: 280,
+      skill: "光の足跡",
+      kind: "paws",
+      dmg: 5,
     };
   }
   return {
@@ -497,14 +509,16 @@ function renderSetup() {
     .map((e) => {
       const on = state.mate && state.mate.id === e.id ? " on" : "";
       const thumb = SHEETS[e.id] ? `<img src="art/${e.id}/front.png" alt="">` : "";
-      return `<button type="button" class="mate${on}" data-mate="${e.id}">${thumb}<b>${e.name}</b><span>主 ${e.owner || "未記入"}</span></button>`;
+      const who = e.artist ? `主 ${e.owner || "未記入"} · 絵師 ${e.artist}` : `主 ${e.owner || "未記入"}`;
+      return `<button type="button" class="mate${on}" data-mate="${e.id}">${thumb}<b>${e.name}</b><span>${who}</span></button>`;
     })
     .join("");
   const e = state.mate;
   if (e) {
-    const skill = field(e, "特技");
+    const skill = field(e, "命令") || field(e, "特技");
     const attr = field(e, "属性") || (e.types || []).join("·") || "—";
-    $("[data-mate-blurb]").textContent = `${e.name} · ${e.species || ""} · ${attr} · ${skill} · 主 ${e.owner || "未記入"}`;
+    const who = e.artist ? `主 ${e.owner || "未記入"} · 絵師 ${e.artist}` : `主 ${e.owner || "未記入"}`;
+    $("[data-mate-blurb]").textContent = `${e.name} · ${e.species || ""} · ${attr} · ${skill} · ${who}`;
   }
   paintRec();
 }
@@ -604,6 +618,8 @@ function bootArena() {
       this.waveAcc = 0;
       this.paceHold = 0;
       this.sparks = [];
+      this.paws = [];
+      this.lastPaw = null;
       this.kills = 0;
       this.dry = 0;
       this.combo = 0;
@@ -1045,6 +1061,10 @@ function bootArena() {
       }
     }
     fire() {
+      if (k.kind === "paws") {
+        this.dropPaw();
+        return;
+      }
       if (k.kind === "puff") {
         const r = 70 + this.lv * 6;
         const ring = this.add.circle(this.player.x, this.player.y, 18, k.color, 0.35);
@@ -1112,6 +1132,47 @@ function bootArena() {
           }
         }
         if (s.life <= 0) s.destroy();
+      }
+    }
+    dropPaw() {
+      if (!this.player) return;
+      const x = this.player.x;
+      const y = this.player.y + 18;
+      if (this.lastPaw) {
+        const gap = Phaser.Math.Distance.Between(this.lastPaw.x, this.lastPaw.y, x, y);
+        const need = this.time.now < this.fastUntil ? 16 : 28;
+        if (gap < need) return;
+      }
+      this.lastPaw = { x, y };
+      const hue = (this.paws.length || 0) % NEON.length;
+      const pad = this.add.ellipse(x, y, 20, 14, NEON[hue], 0.55);
+      pad.setStrokeStyle(2, 0xffffff, 0.45);
+      pad.setDepth(2);
+      pad.life = 1400;
+      pad.tick = 0;
+      this.paws.push(pad);
+      if (this.paws.length > 18) {
+        const old = this.paws.shift();
+        if (old && old.destroy) old.destroy();
+      }
+    }
+    tickPaws(delta) {
+      const dmg = this.skillDmg();
+      this.paws = this.paws.filter((p) => p.active);
+      for (const p of this.paws) {
+        p.life -= delta;
+        p.tick += delta;
+        p.setAlpha(Math.max(0.12, (p.life / 1400) * 0.6));
+        if (p.tick >= 220) {
+          p.tick = 0;
+          this.foes.children.iterate((f) => {
+            if (!f || !f.active) return;
+            const hit = 22 + (f.boss ? 10 : 0);
+            const d = Phaser.Math.Distance.Between(p.x, p.y, f.x, f.y);
+            if (d < hit) this.hurtFoe(f, dmg);
+          });
+        }
+        if (p.life <= 0) p.destroy();
       }
     }
     closest() {
@@ -1264,6 +1325,7 @@ function bootArena() {
       }
       this.move(delta);
       if (k.kind === "spark") this.tickSparks(delta);
+      if (k.kind === "paws") this.tickPaws(delta);
       this.secAcc += delta;
       if (this.secAcc >= 1000) {
         this.secAcc -= 1000;
