@@ -1,4 +1,4 @@
-const VERSION = "0.4.23";
+const VERSION = "0.4.24";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -757,7 +757,10 @@ function bootArena() {
       return k.dmg + (this.lv - 1) * 2;
     }
     skillReach() {
-      return 70 + (this.lv - 1) * 14;
+      return 56 + (this.lv - 1) * 8;
+    }
+    puffReach() {
+      return 48 + (this.lv - 1) * 6;
     }
     sparkCap() {
       return Math.min(6, 2 + this.lv);
@@ -1035,12 +1038,12 @@ function bootArena() {
     }
     fire() {
       if (k.kind === "puff") {
-        const r = this.skillReach();
-        const ring = this.add.circle(this.player.x, this.player.y, 18, k.color, 0.35);
+        const r = this.puffReach();
+        const ring = this.add.circle(this.player.x, this.player.y, 8, k.color, 0.35);
         ring.setStrokeStyle(3, 0xf8b500, 0.9);
         this.tweens.add({
           targets: ring,
-          scale: 2.4,
+          scale: r / 8,
           alpha: 0,
           duration: 280,
           onComplete: () => ring.destroy(),
@@ -1391,8 +1394,10 @@ function bootArena() {
     height: 540,
     backgroundColor: stage.bg,
     physics: { default: "arcade" },
-    render: { antialias: false, roundPixels: true },
-    fps: { target: 30, min: 20 },
+    pixelArt: true,
+    roundPixels: true,
+    render: { antialias: false },
+    fps: { target: 45, min: 24 },
     input: { activePointers: 3 },
     scale: {
       mode: Phaser.Scale.ENVELOP,
