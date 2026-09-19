@@ -1,4 +1,4 @@
-const VERSION = "0.4.21";
+const VERSION = "0.4.22";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1048,19 +1048,19 @@ function bootArena() {
       }
       const dir = this.face > 0 ? 1 : -1;
       this.sparks = this.sparks.filter((s) => s.active);
-      if (this.sparks.length >= 4) return;
-      const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 12, NEON[0], 0.9);
+      if (this.sparks.length >= 3) return;
+      const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 14, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
-      spark.vx = dir * (this.time.now < this.fastUntil ? 0.72 : 0.52);
+      spark.vx = dir * (this.time.now < this.fastUntil ? 0.72 : 0.58);
       spark.travel = 520;
-      spark.life = 1500;
+      spark.life = 1600;
       spark.tick = 0;
       spark.hue = 0;
       this.sparks.push(spark);
     }
     tickSparks(delta) {
-      const r = 36 + this.lv * 2;
+      const r = 70 + this.lv * 6;
       const dmg = this.skillDmg();
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
@@ -1083,8 +1083,8 @@ function bootArena() {
           });
         } else {
           s.tick += delta;
-          s.setScale(1.15 + 0.08 * Math.sin(s.life * 0.02));
-          if (s.tick >= 240) {
+          s.setScale(1.85 + 0.08 * Math.sin(s.life * 0.02));
+          if (s.tick >= 520) {
             s.tick = 0;
             this.foes.children.iterate((f) => {
               if (!f || !f.active) return;
