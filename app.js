@@ -1,4 +1,4 @@
-const VERSION = "0.4.26";
+const VERSION = "0.4.27";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1080,8 +1080,9 @@ function bootArena() {
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
         s.hue = (s.hue + delta * 0.012) % NEON.length;
-        s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
+        const col = NEON[Math.floor(s.hue) % NEON.length];
         if (s.travel > 0) {
+          s.setFillStyle(col, 0.9);
           s.travel -= delta;
           s.x += s.vx * delta;
           s.setScale(0.85);
@@ -1098,9 +1099,12 @@ function bootArena() {
             }
           });
         } else {
+          s.setFillStyle(col, 0.28);
+          s.setStrokeStyle(2, 0xffffff, 0.75);
           s.life -= delta;
           s.tick += delta;
-          s.setScale(1.85 + 0.08 * Math.sin(s.life * 0.02));
+          const z = r / 14;
+          s.setScale(z * (1 + 0.04 * Math.sin(s.life * 0.02)));
           if (s.tick >= 520) {
             s.tick = 0;
             this.foes.children.iterate((f) => {
