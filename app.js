@@ -1,4 +1,4 @@
-const VERSION = "0.4.24";
+const VERSION = "0.4.25";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -760,7 +760,7 @@ function bootArena() {
       return 56 + (this.lv - 1) * 8;
     }
     puffReach() {
-      return 48 + (this.lv - 1) * 6;
+      return 56 + (this.lv - 1) * 6;
     }
     sparkCap() {
       return Math.min(6, 2 + this.lv);
