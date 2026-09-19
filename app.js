@@ -1,4 +1,4 @@
-const VERSION = "0.4.22";
+const VERSION = "0.4.23";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -756,6 +756,12 @@ function bootArena() {
     skillDmg() {
       return k.dmg + (this.lv - 1) * 2;
     }
+    skillReach() {
+      return 70 + (this.lv - 1) * 14;
+    }
+    sparkCap() {
+      return Math.min(6, 2 + this.lv);
+    }
     bakeMarks() {
       const diamond = (g, cx, cy, s, fill, stroke) => {
         g.fillStyle(fill, 1);
@@ -1029,7 +1035,7 @@ function bootArena() {
     }
     fire() {
       if (k.kind === "puff") {
-        const r = 70 + this.lv * 6;
+        const r = this.skillReach();
         const ring = this.add.circle(this.player.x, this.player.y, 18, k.color, 0.35);
         ring.setStrokeStyle(3, 0xf8b500, 0.9);
         this.tweens.add({
@@ -1048,7 +1054,7 @@ function bootArena() {
       }
       const dir = this.face > 0 ? 1 : -1;
       this.sparks = this.sparks.filter((s) => s.active);
-      if (this.sparks.length >= 3) return;
+      if (this.sparks.length >= this.sparkCap()) return;
       const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 14, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
@@ -1060,7 +1066,7 @@ function bootArena() {
       this.sparks.push(spark);
     }
     tickSparks(delta) {
-      const r = 70 + this.lv * 6;
+      const r = this.skillReach();
       const dmg = this.skillDmg();
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
@@ -1289,7 +1295,8 @@ function bootArena() {
       }
       this.shotAcc += delta;
       const hayate = this.time.now < this.fastUntil;
-      const rate = hayate ? Math.max(110, k.rate * 0.28) : k.rate;
+      const paced = Math.max(240, k.rate - (this.lv - 1) * 40);
+      const rate = hayate ? Math.max(110, paced * 0.28) : paced;
       if (this.shotAcc > rate) {
         this.shotAcc = 0;
         this.fire();
