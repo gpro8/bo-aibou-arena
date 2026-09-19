@@ -1,4 +1,4 @@
-const VERSION = "0.4.25";
+const VERSION = "0.4.26";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -765,6 +765,12 @@ function bootArena() {
     sparkCap() {
       return Math.min(6, 2 + this.lv);
     }
+    sparkDirect() {
+      return 8 + (this.lv - 1) * 2;
+    }
+    sparkSitLife() {
+      return 1600 + (this.lv - 1) * 450;
+    }
     bakeMarks() {
       const diamond = (g, cx, cy, s, fill, stroke) => {
         g.fillStyle(fill, 1);
@@ -1063,7 +1069,7 @@ function bootArena() {
       spark.setDepth(8);
       spark.vx = dir * (this.time.now < this.fastUntil ? 0.72 : 0.58);
       spark.travel = 520;
-      spark.life = 1600;
+      spark.life = this.sparkSitLife();
       spark.tick = 0;
       spark.hue = 0;
       this.sparks.push(spark);
@@ -1073,7 +1079,6 @@ function bootArena() {
       const dmg = this.skillDmg();
       this.sparks = this.sparks.filter((s) => s.active);
       for (const s of this.sparks) {
-        s.life -= delta;
         s.hue = (s.hue + delta * 0.012) % NEON.length;
         s.setFillStyle(NEON[Math.floor(s.hue) % NEON.length], 0.85);
         if (s.travel > 0) {
@@ -1088,9 +1093,12 @@ function bootArena() {
               s.travel = 0;
               s.x = f.x;
               s.y = f.y;
+              this.hurtFoe(f, this.sparkDirect());
+              this.flash(f);
             }
           });
         } else {
+          s.life -= delta;
           s.tick += delta;
           s.setScale(1.85 + 0.08 * Math.sin(s.life * 0.02));
           if (s.tick >= 520) {
