@@ -1,4 +1,4 @@
-const VERSION = "0.4.20";
+const VERSION = "0.4.21";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -700,7 +700,7 @@ function bootArena() {
       hud.time.textContent = `${t}秒`;
     }
     liveScore(win) {
-      const clear = win ? 25 : 0;
+      const clear = win ? (mode.id === "hard" ? 50 : 25) : 0;
       return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
     }
     hajikiFoe(f) {
@@ -804,12 +804,13 @@ function bootArena() {
       box.destroy();
     }
     spawn(kind) {
+      const boss = kind === "boss";
+      if (!boss && this.foes.countActive(true) >= 16) return;
       const w = this.scale.width;
       const h = this.scale.height;
       const edge = Phaser.Math.Between(0, 3);
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
-      const boss = kind === "boss";
       const r = boss ? 28 : 14;
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
@@ -817,28 +818,14 @@ function bootArena() {
       foe.hp = boss ? 460 + this.lv * 24 : 20 + (this.lv - 1) * 2;
       foe.maxHp = foe.hp;
       foe.boss = boss;
-      foe.spd = boss ? 80 : 70 + this.lv * 8;
-      this.tweens.add({
-        targets: foe,
-        angle: boss ? -360 : 360,
-        duration: boss ? 14000 : 7000,
-        repeat: -1,
-      });
+      foe.spd = (boss ? 80 : 70) * mode.pace;
+      foe.hajiki = false;
       this.foes.add(foe);
     }
     dropGem(x, y) {
       const gem = this.physics.add.sprite(x, y, "mark-flag");
       gem.setDepth(6);
       gem.body.setCircle(10, 4, 5);
-      this.tweens.add({
-        targets: gem,
-        scale: 1.14,
-        angle: 10,
-        duration: 380,
-        yoyo: true,
-        repeat: -1,
-        ease: "Sine.easeInOut",
-      });
       this.gems.add(gem);
     }
     spawnChest() {
@@ -992,13 +979,9 @@ function bootArena() {
         }
         if (!foe.raged && foe.hp <= foe.maxHp * 0.5) {
           foe.raged = true;
-          foe.spd = 125;
           this.callout("半血");
           buzz([20, 24, 20, 24, 80]);
           if (bar) bar.classList.add("rage");
-          this.time.delayedCall(40, () => {
-            for (let i = 0; i < 4; i += 1) this.spawn();
-          });
         }
       }
       if (foe.hp <= 0) {
@@ -1064,6 +1047,8 @@ function bootArena() {
         return;
       }
       const dir = this.face > 0 ? 1 : -1;
+      this.sparks = this.sparks.filter((s) => s.active);
+      if (this.sparks.length >= 4) return;
       const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 12, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
@@ -1140,7 +1125,7 @@ function bootArena() {
       vy += state.stick.y;
       const len = Math.hypot(vx, vy) || 1;
       const moving = Math.hypot(vx, vy) > 0.01;
-      const spd = k.speed * (1 + (this.lv - 1) * 0.06);
+      const spd = k.speed;
       b.setVelocity(moving ? (vx / len) * spd : 0, moving ? (vy / len) * spd : 0);
       if (this.hasSprite) {
         if (k.bob) {
@@ -1269,8 +1254,7 @@ function bootArena() {
         this.secAcc -= 1000;
         this.left -= 1;
         this.waveAcc += 1;
-        if (this.paceHold > 0) this.paceHold -= 1;
-        this.pace = mode.pace * (this.paceHold > 0 ? 1.55 : 1) * (this.left <= 15 ? 1.5 : 1);
+        this.pace = mode.pace;
         if (this.left === 15) {
           this.callout("終盤");
           buzz([20, 30, 20, 30, 40]);
@@ -1278,11 +1262,6 @@ function bootArena() {
         if (this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
-        }
-        if (this.waveAcc >= 22) {
-          this.waveAcc = 0;
-          this.paceHold = 3;
-          for (let i = 0; i < 4; i += 1) this.spawn();
         }
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
@@ -1304,22 +1283,22 @@ function bootArena() {
         this.spawnChest();
       }
       this.spawnAcc += delta * this.pace;
-      if (this.spawnAcc > Math.max(280, (this.left <= 15 ? 620 : 900) - this.lv * 40)) {
+      if (this.spawnAcc > 900) {
         this.spawnAcc = 0;
         this.spawn();
       }
       this.shotAcc += delta;
       const hayate = this.time.now < this.fastUntil;
       const rate = hayate ? Math.max(110, k.rate * 0.28) : k.rate;
-      if (this.shotAcc > Math.max(110, rate - this.lv * 20)) {
+      if (this.shotAcc > rate) {
         this.shotAcc = 0;
         this.fire();
-        if (hayate && k.kind === "spark") this.fire();
       }
       this.hurtTick -= delta;
       this.foes.children.iterate((f) => {
         if (!f || !f.body) return;
         this.physics.moveToObject(f, this.player, f.spd || 70);
+        f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
         const reach = f.boss ? 54 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
@@ -1405,7 +1384,8 @@ function bootArena() {
     height: 540,
     backgroundColor: stage.bg,
     physics: { default: "arcade" },
-    render: { antialias: true, roundPixels: true },
+    render: { antialias: false, roundPixels: true },
+    fps: { target: 30, min: 20 },
     input: { activePointers: 3 },
     scale: {
       mode: Phaser.Scale.ENVELOP,
