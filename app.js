@@ -1,4 +1,4 @@
-const VERSION = "0.4.32";
+const VERSION = "0.4.33";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -6,8 +6,8 @@ const SHEETS = {
 };
 
 const MODES = [
-  { id: "easy", label: "ふつう", secs: 90, pace: 1 },
-  { id: "hard", label: "きつい", secs: 60, pace: 1.35 },
+  { id: "easy", label: "ふつう", secs: 120, pace: 1 },
+  { id: "hard", label: "きつい", secs: 80, pace: 1.35 },
 ];
 const STAGES = [
   { id: "yang", label: "陽", bg: 0xe8dcc8, foe: 0x4a2060 },
@@ -848,9 +848,9 @@ function bootArena() {
       const p = this.clockPct();
       if (p < 0.15) return "small";
       if (p < 0.33) return Math.random() < 0.55 ? "thick" : "small";
-      if (p < 0.56) return Math.random() < 0.6 ? "brute" : "thick";
-      if (p < 0.67) return Math.random() < 0.55 ? "fly" : "brute";
-      if (p < 0.8) return Math.random() < 0.55 ? "rebound" : "fly";
+      if (p < 0.48) return Math.random() < 0.6 ? "brute" : "thick";
+      if (p < 0.62) return Math.random() < 0.55 ? "fly" : "brute";
+      if (p < 0.78) return Math.random() < 0.55 ? "rebound" : "fly";
       return Math.random() < 0.45 ? "well" : Math.random() < 0.5 ? "rebound" : "fly";
     }
     spawn(kind) {
@@ -1406,7 +1406,28 @@ function bootArena() {
       this.foes.children.iterate((f) => {
         if (!f || !f.body) return;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
-        if (f.job === "brute" && !f.boss) {
+        if (f.boss) {
+          f.dashCd = f.dashCd || 0;
+          if (f.dashCd > 0) f.dashCd -= delta;
+          if (d < 160 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
+            f.wind = 380;
+            f.setTint(0xf8b500);
+          }
+          if (f.wind > 0) {
+            f.wind -= delta;
+            this.physics.moveToObject(f, this.player, 14);
+            if (f.wind <= 0) {
+              f.clearTint();
+              f.lunge = 300;
+            }
+          } else if (f.lunge > 0) {
+            f.lunge -= delta;
+            this.physics.moveToObject(f, this.player, 210 * mode.pace);
+            if (f.lunge <= 0) f.dashCd = 1600;
+          } else {
+            this.physics.moveToObject(f, this.player, f.spd || 80);
+          }
+        } else if (f.job === "brute" && !f.boss) {
           if (d < 92 && f.wind <= 0 && f.lunge <= 0) {
             f.wind = 420;
             f.setTint(0xf8b500);
