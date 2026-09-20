@@ -1,4 +1,4 @@
-const VERSION = "0.4.30";
+const VERSION = "0.4.31";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -598,6 +598,16 @@ function bootArena() {
       this.physics.add.overlap(this.player, this.chests, (_p, box) => {
         this.openChest(box);
       });
+      this.physics.add.overlap(this.player, this.bolts, (_p, bolt) => {
+        if (!bolt.active) return;
+        bolt.destroy();
+        const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
+        if (guarded) return;
+        this.hp -= 2;
+        this.hurtTick = 480;
+        this.grazeStreak = 0;
+        if (this.hp <= 0) this.finish(false);
+      });
       this.hurtTick = 0;
       this.spawnAcc = 0;
       this.shotAcc = 0;
@@ -827,8 +837,9 @@ function bootArena() {
       const p = this.clockPct();
       if (p < 0.15) return "small";
       if (p < 0.33) return Math.random() < 0.55 ? "thick" : "small";
-      if (p < 0.7) return Math.random() < 0.6 ? "brute" : "thick";
-      return "brute";
+      if (p < 0.56) return Math.random() < 0.6 ? "brute" : "thick";
+      if (p < 0.72) return Math.random() < 0.55 ? "fly" : "brute";
+      return Math.random() < 0.65 ? "fly" : "brute";
     }
     spawn(kind) {
       const boss = kind === "boss";
@@ -839,7 +850,7 @@ function bootArena() {
       const edge = Phaser.Math.Between(0, 3);
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
-      const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : 14;
+      const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "fly" ? 12 : 14;
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
@@ -847,19 +858,34 @@ function bootArena() {
       if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
       else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
+      else if (job === "fly") foe.hp = Math.ceil((16 + (this.lv - 1) * 2) * late);
       else foe.hp = Math.ceil((24 + (this.lv - 1) * 2) * late);
       foe.maxHp = foe.hp;
       foe.boss = boss;
       foe.job = job;
-      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : 70) * mode.pace;
+      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "fly" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
       foe.wind = 0;
       foe.lunge = 0;
+      foe.shotAcc = 0;
       if (!boss) {
-        foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : 1);
+        foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "fly" ? 0.88 : 1);
         if (job === "brute") foe.setTint(0x2a1040);
+        if (job === "fly") foe.setTint(0x39f0ff);
       }
       this.foes.add(foe);
+    }
+    fireBolt(from) {
+      if (!from || !from.active || !this.player) return;
+      if (this.bolts.countActive(true) >= 4) return;
+      const b = this.physics.add.sprite(from.x, from.y, "mark-foe");
+      b.setScale(0.42);
+      b.setTint(0x39f0ff);
+      b.setDepth(7);
+      b.body.setCircle(6, 4, 4);
+      b.life = 900;
+      this.physics.moveToObject(b, this.player, 190);
+      this.bolts.add(b);
     }
     dropGem(x, y) {
       const gem = this.physics.add.sprite(x, y, "mark-flag");
@@ -1087,7 +1113,8 @@ function bootArena() {
       }
       const dir = this.face > 0 ? 1 : -1;
       this.sparks = this.sparks.filter((s) => s.active);
-      if (this.sparks.length >= this.sparkCap()) return;
+      const inflight = this.sparks.filter((s) => s.travel > 0).length;
+      if (inflight >= this.sparkCap()) return;
       const spark = this.add.circle(this.player.x + dir * 24, this.player.y, 14, NEON[0], 0.9);
       spark.setStrokeStyle(3, 0xffffff, 0.75);
       spark.setDepth(8);
@@ -1371,6 +1398,20 @@ function bootArena() {
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 56);
           }
+        } else if (f.job === "fly") {
+          f.shotAcc = (f.shotAcc || 0) + delta;
+          if (d < 150) {
+            const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
+            f.body.setVelocity(Math.cos(ang) * (f.spd || 52), Math.sin(ang) * (f.spd || 52));
+          } else if (d > 230) {
+            this.physics.moveToObject(f, this.player, f.spd || 52);
+          } else {
+            f.body.setVelocity(0, 0);
+          }
+          if (f.shotAcc > 1300) {
+            f.shotAcc = 0;
+            this.fireBolt(f);
+          }
         } else {
           this.physics.moveToObject(f, this.player, f.spd || 70);
         }
@@ -1378,7 +1419,7 @@ function bootArena() {
         const reach = f.boss ? 54 : f.job === "small" ? 28 : f.job === "brute" ? 40 : 34;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (d < reach && !guarded) {
-          const sting = f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" ? 1 : this.left <= 15 ? 3 : 2;
+          const sting = f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" || f.job === "fly" ? 1 : this.left <= 15 ? 3 : 2;
           this.hp -= sting;
           this.hurtTick = f.boss ? 480 : 650;
           this.grazeStreak = 0;
@@ -1405,6 +1446,12 @@ function bootArena() {
           }
           if (this.grazeStreak % 3 === 0) this.dropGem(f.x, f.y);
         }
+      });
+      this.bolts.children.iterate((b) => {
+        if (!b || !b.active) return;
+        b.life -= delta;
+        b.angle += 8;
+        if (b.life <= 0) b.destroy();
       });
       this.gems.children.iterate((g) => {
         if (!g || !g.active || !this.player) return;
