@@ -1,4 +1,4 @@
-const VERSION = "0.4.27";
+const VERSION = "0.4.28";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -757,7 +757,8 @@ function bootArena() {
       return k.dmg + (this.lv - 1) * 2;
     }
     skillReach() {
-      return 56 + (this.lv - 1) * 8;
+      const t = this.lv >= 9 ? 3 : this.lv >= 6 ? 2 : this.lv >= 3 ? 1 : 0;
+      return 26 + t * 10;
     }
     puffReach() {
       return 56 + (this.lv - 1) * 6;
@@ -830,7 +831,7 @@ function bootArena() {
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
-      foe.hp = boss ? 460 + this.lv * 24 : 20 + (this.lv - 1) * 2;
+      foe.hp = boss ? 460 + this.lv * 24 : Math.ceil((20 + (this.lv - 1) * 2) * (this.left <= 15 ? 1.5 : 1));
       foe.maxHp = foe.hp;
       foe.boss = boss;
       foe.spd = (boss ? 80 : 70) * mode.pace;
@@ -963,10 +964,10 @@ function bootArena() {
         if (foe.active) foe.clearTint();
       });
     }
-    pop(x, y, n, color) {
+    pop(x, y, n, color, size) {
       const t = this.add.text(x, y - 8, `${n}`, {
         fontFamily: "sans-serif",
-        fontSize: "14px",
+        fontSize: size || "14px",
         color: color || "#fff4a3",
         stroke: "#1a1408",
         strokeThickness: 3,
@@ -981,10 +982,10 @@ function bootArena() {
         onComplete: () => t.destroy(),
       });
     }
-    hurtFoe(foe, dmg) {
+    hurtFoe(foe, dmg, popSize) {
       if (!foe.active) return;
       foe.hp -= dmg;
-      this.pop(foe.x, foe.y, dmg);
+      this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
       if (foe.boss && foe.hp > 0) {
         const bar = $("#bosshp");
         if (bar) {
@@ -1094,8 +1095,9 @@ function bootArena() {
               s.travel = 0;
               s.x = f.x;
               s.y = f.y;
-              this.hurtFoe(f, this.sparkDirect());
+              this.hurtFoe(f, this.sparkDirect(), "22px");
               this.flash(f);
+              if (this.cameras && this.cameras.main) this.cameras.main.shake(100, 0.012);
             }
           });
         } else {
@@ -1279,10 +1281,17 @@ function bootArena() {
         if (this.left === 15) {
           this.callout("終盤");
           buzz([20, 30, 20, 30, 40]);
+          this.foes.children.iterate((f) => {
+            if (!f || !f.active || f.boss) return;
+            f.hp = Math.ceil(f.hp * 1.4);
+            f.maxHp = Math.ceil(f.maxHp * 1.4);
+          });
         }
         if (this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
+          for (let i = 0; i < 3; i += 1) this.spawn();
+          this.waveAcc = 0;
         }
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
@@ -1325,7 +1334,7 @@ function bootArena() {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (d < reach && !guarded) {
-          this.hp -= f.boss ? 10 : 2;
+          this.hp -= f.boss ? 10 : this.left <= 15 ? 3 : 2;
           this.hurtTick = f.boss ? 480 : 650;
           this.grazeStreak = 0;
           if (this.hp <= 0) this.finish(false);
@@ -1409,7 +1418,7 @@ function bootArena() {
     pixelArt: true,
     roundPixels: true,
     render: { antialias: false },
-    fps: { target: 45, min: 24 },
+    fps: { target: 60, min: 24 },
     input: { activePointers: 3 },
     scale: {
       mode: Phaser.Scale.ENVELOP,
