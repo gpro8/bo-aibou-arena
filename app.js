@@ -1,4 +1,4 @@
-const VERSION = "0.4.28";
+const VERSION = "0.4.29";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -758,13 +758,13 @@ function bootArena() {
     }
     skillReach() {
       const t = this.lv >= 9 ? 3 : this.lv >= 6 ? 2 : this.lv >= 3 ? 1 : 0;
-      return 26 + t * 10;
+      return 14 + t * 10;
     }
     puffReach() {
       return 56 + (this.lv - 1) * 6;
     }
     sparkCap() {
-      return Math.min(6, 2 + this.lv);
+      return Math.min(8, 4 + this.lv);
     }
     sparkDirect() {
       return 8 + (this.lv - 1) * 2;
@@ -1097,7 +1097,6 @@ function bootArena() {
               s.y = f.y;
               this.hurtFoe(f, this.sparkDirect(), "22px");
               this.flash(f);
-              if (this.cameras && this.cameras.main) this.cameras.main.shake(100, 0.012);
             }
           });
         } else {
@@ -1324,6 +1323,7 @@ function bootArena() {
       if (this.shotAcc > rate) {
         this.shotAcc = 0;
         this.fire();
+        if (hayate && k.kind === "spark") this.fire();
       }
       this.hurtTick -= delta;
       this.foes.children.iterate((f) => {
