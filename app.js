@@ -1,4 +1,4 @@
-const VERSION = "0.4.33";
+const VERSION = "0.4.34";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -913,6 +913,26 @@ function bootArena() {
       this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
       this.bolts.add(b);
     }
+    paintDashLane(f) {
+      if (!this.dashLane) {
+        this.dashLane = this.add.graphics();
+        this.dashLane.setDepth(9);
+      }
+      const g = this.dashLane;
+      g.clear();
+      if (Math.floor(this.time.now / 80) % 2 === 0) return;
+      const ang = f.dashAng || 0;
+      const x2 = f.x + Math.cos(ang) * 520;
+      const y2 = f.y + Math.sin(ang) * 520;
+      g.lineStyle(4, 0xffffff, 0.95);
+      g.beginPath();
+      g.moveTo(f.x, f.y);
+      g.lineTo(x2, y2);
+      g.strokePath();
+    }
+    clearDashLane() {
+      if (this.dashLane) this.dashLane.clear();
+    }
     dropGem(x, y) {
       const gem = this.physics.add.sprite(x, y, "mark-flag");
       gem.setDepth(6);
@@ -1292,6 +1312,7 @@ function bootArena() {
     finish(win) {
       if (this.ended) return;
       this.ended = true;
+      this.clearDashLane();
       lockPortrait();
       const play = $(".play");
       if (play) play.classList.remove("combo");
@@ -1410,20 +1431,27 @@ function bootArena() {
           f.dashCd = f.dashCd || 0;
           if (f.dashCd > 0) f.dashCd -= delta;
           if (d < 160 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
-            f.wind = 380;
+            f.wind = 480;
+            f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
             f.setTint(0xf8b500);
           }
           if (f.wind > 0) {
             f.wind -= delta;
-            this.physics.moveToObject(f, this.player, 14);
+            f.body.setVelocity(0, 0);
+            this.paintDashLane(f);
             if (f.wind <= 0) {
               f.clearTint();
               f.lunge = 300;
+              this.clearDashLane();
             }
           } else if (f.lunge > 0) {
             f.lunge -= delta;
-            this.physics.moveToObject(f, this.player, 210 * mode.pace);
-            if (f.lunge <= 0) f.dashCd = 1600;
+            const spd = 210 * mode.pace;
+            f.body.setVelocity(Math.cos(f.dashAng) * spd, Math.sin(f.dashAng) * spd);
+            if (f.lunge <= 0) {
+              f.dashCd = 1600;
+              f.body.setVelocity(0, 0);
+            }
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 80);
           }
