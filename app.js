@@ -1,4 +1,4 @@
-const VERSION = "0.4.29";
+const VERSION = "0.4.30";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -574,6 +574,7 @@ function bootArena() {
       this.cursors = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT");
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
+      this.bolts = this.physics.add.group();
       this.gems = this.physics.add.group();
       this.chests = this.physics.add.group();
       this.physics.add.overlap(this.shots, this.foes, (shot, foe) => {
@@ -819,23 +820,45 @@ function bootArena() {
       box.generateTexture("mark-chest", 44, 38);
       box.destroy();
     }
+    clockPct() {
+      return 1 - this.left / mode.secs;
+    }
+    pickJob() {
+      const p = this.clockPct();
+      if (p < 0.15) return "small";
+      if (p < 0.33) return Math.random() < 0.55 ? "thick" : "small";
+      if (p < 0.7) return Math.random() < 0.6 ? "brute" : "thick";
+      return "brute";
+    }
     spawn(kind) {
       const boss = kind === "boss";
       if (!boss && this.foes.countActive(true) >= 16) return;
+      const job = boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
       const w = this.scale.width;
       const h = this.scale.height;
       const edge = Phaser.Math.Between(0, 3);
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
-      const r = boss ? 28 : 14;
+      const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : 14;
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
-      foe.hp = boss ? 460 + this.lv * 24 : Math.ceil((20 + (this.lv - 1) * 2) * (this.left <= 15 ? 1.5 : 1));
+      const late = this.left <= 15 ? 1.5 : 1;
+      if (boss) foe.hp = 460 + this.lv * 24;
+      else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
+      else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
+      else foe.hp = Math.ceil((24 + (this.lv - 1) * 2) * late);
       foe.maxHp = foe.hp;
       foe.boss = boss;
-      foe.spd = (boss ? 80 : 70) * mode.pace;
+      foe.job = job;
+      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : 70) * mode.pace;
       foe.hajiki = false;
+      foe.wind = 0;
+      foe.lunge = 0;
+      if (!boss) {
+        foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : 1);
+        if (job === "brute") foe.setTint(0x2a1040);
+      }
       this.foes.add(foe);
     }
     dropGem(x, y) {
@@ -1289,7 +1312,8 @@ function bootArena() {
         if (this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
-          for (let i = 0; i < 3; i += 1) this.spawn();
+          const job = this.pickJob();
+          for (let i = 0; i < 3; i += 1) this.spawn(job);
           this.waveAcc = 0;
         }
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
@@ -1328,13 +1352,34 @@ function bootArena() {
       this.hurtTick -= delta;
       this.foes.children.iterate((f) => {
         if (!f || !f.body) return;
-        this.physics.moveToObject(f, this.player, f.spd || 70);
-        f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
-        const reach = f.boss ? 54 : 34;
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, f.x, f.y);
+        if (f.job === "brute" && !f.boss) {
+          if (d < 92 && f.wind <= 0 && f.lunge <= 0) {
+            f.wind = 420;
+            f.setTint(0xf8b500);
+          }
+          if (f.wind > 0) {
+            f.wind -= delta;
+            this.physics.moveToObject(f, this.player, 10);
+            if (f.wind <= 0) {
+              f.setTint(0x2a1040);
+              f.lunge = 240;
+            }
+          } else if (f.lunge > 0) {
+            f.lunge -= delta;
+            this.physics.moveToObject(f, this.player, 155 * mode.pace);
+          } else {
+            this.physics.moveToObject(f, this.player, f.spd || 56);
+          }
+        } else {
+          this.physics.moveToObject(f, this.player, f.spd || 70);
+        }
+        f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
+        const reach = f.boss ? 54 : f.job === "small" ? 28 : f.job === "brute" ? 40 : 34;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (d < reach && !guarded) {
-          this.hp -= f.boss ? 10 : this.left <= 15 ? 3 : 2;
+          const sting = f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" ? 1 : this.left <= 15 ? 3 : 2;
+          this.hp -= sting;
           this.hurtTick = f.boss ? 480 : 650;
           this.grazeStreak = 0;
           if (this.hp <= 0) this.finish(false);
