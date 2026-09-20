@@ -1,4 +1,4 @@
-const VERSION = "0.4.31";
+const VERSION = "0.4.32";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -600,13 +600,24 @@ function bootArena() {
       });
       this.physics.add.overlap(this.player, this.bolts, (_p, bolt) => {
         if (!bolt.active) return;
-        bolt.destroy();
+        if (bolt.iframes > 0) return;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
-        if (guarded) return;
-        this.hp -= 2;
-        this.hurtTick = 480;
-        this.grazeStreak = 0;
-        if (this.hp <= 0) this.finish(false);
+        if (!guarded) {
+          this.hp -= 2;
+          this.hurtTick = 480;
+          this.grazeStreak = 0;
+          if (this.hp <= 0) this.finish(false);
+        }
+        if (bolt.bounce > 0) {
+          bolt.bounce -= 1;
+          bolt.iframes = 220;
+          if (bolt.body && bolt.body.velocity) {
+            bolt.body.velocity.x *= -1;
+            bolt.body.velocity.y *= -1;
+          }
+        } else {
+          bolt.destroy();
+        }
       });
       this.hurtTick = 0;
       this.spawnAcc = 0;
@@ -838,19 +849,27 @@ function bootArena() {
       if (p < 0.15) return "small";
       if (p < 0.33) return Math.random() < 0.55 ? "thick" : "small";
       if (p < 0.56) return Math.random() < 0.6 ? "brute" : "thick";
-      if (p < 0.72) return Math.random() < 0.55 ? "fly" : "brute";
-      return Math.random() < 0.65 ? "fly" : "brute";
+      if (p < 0.67) return Math.random() < 0.55 ? "fly" : "brute";
+      if (p < 0.8) return Math.random() < 0.55 ? "rebound" : "fly";
+      return Math.random() < 0.45 ? "well" : Math.random() < 0.5 ? "rebound" : "fly";
     }
     spawn(kind) {
       const boss = kind === "boss";
       if (!boss && this.foes.countActive(true) >= 16) return;
-      const job = boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
+      let job = boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
+      if (!boss && job === "well") {
+        let hasWell = false;
+        this.foes.children.iterate((f) => {
+          if (f && f.active && f.job === "well") hasWell = true;
+        });
+        if (hasWell) job = "rebound";
+      }
       const w = this.scale.width;
       const h = this.scale.height;
       const edge = Phaser.Math.Between(0, 3);
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
-      const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "fly" ? 12 : 14;
+      const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "well" ? 18 : job === "fly" || job === "rebound" ? 12 : 14;
       const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
@@ -858,33 +877,40 @@ function bootArena() {
       if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
       else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
-      else if (job === "fly") foe.hp = Math.ceil((16 + (this.lv - 1) * 2) * late);
+      else if (job === "fly" || job === "rebound") foe.hp = Math.ceil((16 + (this.lv - 1) * 2) * late);
+      else if (job === "well") foe.hp = Math.ceil((48 + (this.lv - 1) * 3) * late);
       else foe.hp = Math.ceil((24 + (this.lv - 1) * 2) * late);
       foe.maxHp = foe.hp;
       foe.boss = boss;
       foe.job = job;
-      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "fly" ? 52 : 70) * mode.pace;
+      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
       foe.wind = 0;
       foe.lunge = 0;
       foe.shotAcc = 0;
+      foe.pulling = 0;
       if (!boss) {
-        foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "fly" ? 0.88 : 1);
+        foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "well" ? 1.4 : job === "fly" || job === "rebound" ? 0.88 : 1);
         if (job === "brute") foe.setTint(0x2a1040);
         if (job === "fly") foe.setTint(0x39f0ff);
+        if (job === "rebound") foe.setTint(0xff9a3a);
+        if (job === "well") foe.setTint(0xb44dff);
       }
       this.foes.add(foe);
     }
     fireBolt(from) {
       if (!from || !from.active || !this.player) return;
       if (this.bolts.countActive(true) >= 4) return;
+      const rebound = from.job === "rebound";
       const b = this.physics.add.sprite(from.x, from.y, "mark-foe");
       b.setScale(0.42);
-      b.setTint(0x39f0ff);
+      b.setTint(rebound ? 0xff9a3a : 0x39f0ff);
       b.setDepth(7);
       b.body.setCircle(6, 4, 4);
-      b.life = 900;
-      this.physics.moveToObject(b, this.player, 190);
+      b.life = rebound ? 1200 : 900;
+      b.bounce = rebound ? 1 : 0;
+      b.iframes = 0;
+      this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
       this.bolts.add(b);
     }
     dropGem(x, y) {
@@ -1398,7 +1424,7 @@ function bootArena() {
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 56);
           }
-        } else if (f.job === "fly") {
+        } else if (f.job === "fly" || f.job === "rebound") {
           f.shotAcc = (f.shotAcc || 0) + delta;
           if (d < 150) {
             const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
@@ -1412,13 +1438,46 @@ function bootArena() {
             f.shotAcc = 0;
             this.fireBolt(f);
           }
+        } else if (f.job === "well") {
+          f.shotAcc = (f.shotAcc || 0) + delta;
+          this.physics.moveToObject(f, this.player, f.spd || 24);
+          if (f.shotAcc > 1200 && f.pulling <= 0) {
+            f.shotAcc = 0;
+            f.pulling = 400;
+            f.setScale(1.55);
+          }
+          if (f.pulling > 0) {
+            f.pulling -= delta;
+            this.player.x += (f.x - this.player.x) * 0.045;
+            this.player.y += (f.y - this.player.y) * 0.045;
+            this.foes.children.iterate((o) => {
+              if (!o || o === f || o.boss) return;
+              o.x += (f.x - o.x) * 0.03;
+              o.y += (f.y - o.y) * 0.03;
+            });
+            if (f.pulling <= 0) {
+              f.setScale(1.4);
+              const popR = 72;
+              if (d < popR) {
+                const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
+                if (!guarded) {
+                  this.hp -= 2;
+                  this.hurtTick = 400;
+                  this.grazeStreak = 0;
+                  if (this.hp <= 0) this.finish(false);
+                }
+              }
+            }
+          }
         } else {
           this.physics.moveToObject(f, this.player, f.spd || 70);
         }
         f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
         const reach = f.boss ? 54 : f.job === "small" ? 28 : f.job === "brute" ? 40 : 34;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
-        if (d < reach && !guarded) {
+        if (f.job === "well") {
+          /* 吸い場: no contact. pop is the hit */
+        } else if (d < reach && !guarded) {
           const sting = f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" || f.job === "fly" ? 1 : this.left <= 15 ? 3 : 2;
           this.hp -= sting;
           this.hurtTick = f.boss ? 480 : 650;
@@ -1450,6 +1509,7 @@ function bootArena() {
       this.bolts.children.iterate((b) => {
         if (!b || !b.active) return;
         b.life -= delta;
+        if (b.iframes > 0) b.iframes -= delta;
         b.angle += 8;
         if (b.life <= 0) b.destroy();
       });
