@@ -71,25 +71,28 @@ html:-webkit-full-screen #raise-ov * {
 }
 #bosshp {
   position: absolute;
-  right: calc(12px + var(--safe-r));
-  bottom: calc(12px + var(--safe-b));
+  left: 50%;
+  right: auto;
+  bottom: calc(14px + var(--safe-b));
+  transform: translateX(-50%);
   z-index: 5;
-  min-width: 148px;
-  padding: 8px 10px;
-  background: rgba(18, 16, 14, 0.72);
+  width: min(72vw, 440px);
+  min-width: 220px;
+  padding: 8px 12px;
+  background: rgba(18, 16, 14, 0.78);
   border: 1px solid var(--gold);
   border-radius: 10px;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--gold);
 }
 #bosshp.hidden { display: none !important; }
 #bosshp.hit { box-shadow: 0 0 16px #f8b500; }
 #bosshp.rage { box-shadow: 0 0 22px #ff3d8a; }
-#bosshp .hpbar { width: 100%; flex: 1 1 auto; }
+#bosshp .hpbar { width: 100%; flex: 1 1 auto; height: 16px; }
 .hpbar.boss i { background: linear-gradient(90deg, #c94a4a, #f8b500); }
 body.playing {
   overflow: hidden;
@@ -322,8 +325,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   right: calc(12px + var(--safe-r));
 }
 #bosshp.swap {
+  left: 50%;
   right: auto;
-  left: calc(12px + var(--safe-l));
 }
 #stick-ov {
   position: fixed;

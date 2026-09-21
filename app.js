@@ -1,4 +1,4 @@
-const VERSION = "0.4.42";
+const VERSION = "0.4.43";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -600,7 +600,6 @@ function bootArena() {
         if (!shot.active || !foe.active) return;
         shot.destroy();
         this.hurtFoe(foe, this.skillDmg());
-        if (k.kind === "spark") this.flash(foe);
       });
       this.physics.add.overlap(this.player, this.gems, (_p, gem) => {
         gem.destroy();
@@ -906,9 +905,9 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : 0.46;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : 0.36;
         foe.setScale(sc);
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : 30;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         foe.play(`${artKey}-run`);
       } else {
@@ -1123,11 +1122,22 @@ function bootArena() {
       });
     }
     flash(foe) {
-      if (!foe.active) return;
-      foe.setTint(NEON[Phaser.Math.Between(0, NEON.length - 1)]);
-      if (foe.body) foe.body.velocity.scale(0.2);
-      this.time.delayedCall(140, () => {
-        if (foe.active) foe.clearTint();
+      if (!foe || !foe.active) return;
+      if (foe.body && !foe.boss) foe.body.velocity.scale(0.35);
+      const key = foe.texture && foe.texture.key;
+      if (!key) return;
+      const ov = this.add.sprite(foe.x, foe.y, key, foe.frame ? foe.frame.name : undefined);
+      ov.setTintFill(0xffffff);
+      ov.setAlpha(0.8);
+      ov.setScale(foe.scaleX, foe.scaleY);
+      ov.setFlipX(!!foe.flipX);
+      ov.setAngle(foe.angle || 0);
+      ov.setDepth((foe.depth || 4) + 2);
+      this.tweens.add({
+        targets: ov,
+        alpha: 0,
+        duration: 160,
+        onComplete: () => ov.destroy(),
       });
     }
     pop(x, y, n, color, size) {
@@ -1150,6 +1160,7 @@ function bootArena() {
     }
     hurtFoe(foe, dmg, popSize) {
       if (!foe.active) return;
+      this.flash(foe);
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
       if (foe.boss && foe.hp > 0) {
@@ -1264,7 +1275,6 @@ function bootArena() {
               s.x = f.x;
               s.y = f.y;
               this.hurtFoe(f, this.sparkDirect(), "22px");
-              this.flash(f);
             }
           });
         } else {
@@ -1281,7 +1291,6 @@ function bootArena() {
               const d = Phaser.Math.Distance.Between(s.x, s.y, f.x, f.y);
               if (d < r) {
                 this.hurtFoe(f, dmg);
-                this.flash(f);
               }
             });
           }
