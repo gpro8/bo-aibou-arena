@@ -1,4 +1,4 @@
-const VERSION = "0.4.34";
+const VERSION = "0.4.35";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -913,25 +913,45 @@ function bootArena() {
       this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
       this.bolts.add(b);
     }
-    paintDashLane(f) {
+    paintDashLane(f, running) {
       if (!this.dashLane) {
         this.dashLane = this.add.graphics();
         this.dashLane.setDepth(9);
       }
       const g = this.dashLane;
       g.clear();
-      if (Math.floor(this.time.now / 80) % 2 === 0) return;
       const ang = f.dashAng || 0;
-      const x2 = f.x + Math.cos(ang) * 520;
-      const y2 = f.y + Math.sin(ang) * 520;
-      g.lineStyle(4, 0xffffff, 0.95);
+      const ox = f.dashOx ?? f.x;
+      const oy = f.dashOy ?? f.y;
+      const len = f.dashLen || 520;
+      const x2 = ox + Math.cos(ang) * len;
+      const y2 = oy + Math.sin(ang) * len;
+      const flash = running || Math.floor(this.time.now / 90) % 2 === 1;
+      g.lineStyle(22, 0xffffff, flash ? 0.55 : 0.22);
       g.beginPath();
-      g.moveTo(f.x, f.y);
+      g.moveTo(ox, oy);
+      g.lineTo(x2, y2);
+      g.strokePath();
+      g.lineStyle(8, 0xffffff, flash ? 1 : 0.4);
+      g.beginPath();
+      g.moveTo(ox, oy);
       g.lineTo(x2, y2);
       g.strokePath();
     }
     clearDashLane() {
       if (this.dashLane) this.dashLane.clear();
+    }
+    laneLen(x, y, ang) {
+      const w = this.scale.width;
+      const h = this.scale.height;
+      const c = Math.cos(ang);
+      const s = Math.sin(ang);
+      let t = 1e9;
+      if (c > 0.02) t = Math.min(t, (w - 18 - x) / c);
+      else if (c < -0.02) t = Math.min(t, (18 - x) / c);
+      if (s > 0.02) t = Math.min(t, (h - 18 - y) / s);
+      else if (s < -0.02) t = Math.min(t, (18 - y) / s);
+      return Math.max(240, Math.min(t, 900));
     }
     dropGem(x, y) {
       const gem = this.physics.add.sprite(x, y, "mark-flag");
@@ -1430,27 +1450,38 @@ function bootArena() {
         if (f.boss) {
           f.dashCd = f.dashCd || 0;
           if (f.dashCd > 0) f.dashCd -= delta;
-          if (d < 160 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
-            f.wind = 480;
+          if (d < 180 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
+            f.wind = 560;
             f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
+            f.dashOx = f.x;
+            f.dashOy = f.y;
+            f.dashLen = this.laneLen(f.x, f.y, f.dashAng);
+            f.dashDist = 0;
             f.setTint(0xf8b500);
           }
           if (f.wind > 0) {
             f.wind -= delta;
             f.body.setVelocity(0, 0);
-            this.paintDashLane(f);
+            this.paintDashLane(f, false);
             if (f.wind <= 0) {
               f.clearTint();
-              f.lunge = 300;
-              this.clearDashLane();
+              f.lunge = 1;
             }
           } else if (f.lunge > 0) {
-            f.lunge -= delta;
-            const spd = 210 * mode.pace;
+            const spd = 520 * mode.pace;
             f.body.setVelocity(Math.cos(f.dashAng) * spd, Math.sin(f.dashAng) * spd);
-            if (f.lunge <= 0) {
-              f.dashCd = 1600;
+            f.dashDist = (f.dashDist || 0) + spd * (delta / 1000);
+            this.paintDashLane(f, true);
+            const w = this.scale.width;
+            const h = this.scale.height;
+            const off = f.x < 12 || f.y < 12 || f.x > w - 12 || f.y > h - 12;
+            if (f.dashDist >= f.dashLen || off) {
+              f.lunge = 0;
+              f.dashCd = 1400;
               f.body.setVelocity(0, 0);
+              f.x = Phaser.Math.Clamp(f.x, 24, w - 24);
+              f.y = Phaser.Math.Clamp(f.y, 24, h - 24);
+              this.clearDashLane();
             }
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 80);
