@@ -1,4 +1,4 @@
-const VERSION = "0.4.35";
+const VERSION = "0.4.36";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -726,7 +726,7 @@ function bootArena() {
       return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
     }
     hajikiFoe(f) {
-      if (!f || !f.active || f.hajiki) return;
+      if (!f || !f.active || f.hajiki || f.boss) return;
       f.hajiki = true;
       const ang = Math.atan2(f.y - this.player.y, f.x - this.player.x);
       const nx = f.x + Math.cos(ang) * 150;
@@ -1140,6 +1140,7 @@ function bootArena() {
           if (this.combo === 5) this.callout("連");
         }
         if (boss) {
+          this.clearDashLane();
           this.bossDown += 1;
           this.dropGem(x - 16, y);
           this.dropGem(x + 16, y);
@@ -1558,13 +1559,15 @@ function bootArena() {
         if (f.job === "well") {
           /* 吸い場: no contact. pop is the hit */
         } else if (d < reach && !guarded) {
-          const sting = f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" || f.job === "fly" ? 1 : this.left <= 15 ? 3 : 2;
+          const bull = f.boss && f.lunge > 0;
+          const sting = bull ? 18 : f.boss ? 10 : f.job === "brute" && f.lunge > 0 ? 4 : f.job === "small" || f.job === "fly" ? 1 : this.left <= 15 ? 3 : 2;
           this.hp -= sting;
-          this.hurtTick = f.boss ? 480 : 650;
+          this.hurtTick = bull ? 720 : f.boss ? 480 : 650;
           this.grazeStreak = 0;
+          if (bull) this.pop(this.player.x, this.player.y - 32, "直撃", "#ff3d8a");
           if (this.hp <= 0) this.finish(false);
         } else if (d < reach && guarded) {
-          this.hajikiFoe(f);
+          if (!f.boss) this.hajikiFoe(f);
         } else if (f.hajiki && d > reach + 36) {
           f.hajiki = false;
         } else if (!f.boss && !guarded && !f.grazed && d >= reach && d < reach + 26) {
