@@ -1,2 +1,7 @@
 .DS_Store
 art/**/raw-*.png
+art/foes/preview-dark.png
+art/foes/*/0.png
+art/foes/*/1.png
+art/foes/*/2.png
+

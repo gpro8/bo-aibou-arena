@@ -1,8 +1,14 @@
-const VERSION = "0.4.39";
+const VERSION = "0.4.40";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
   mokopu: "art/mokopu/sheet.png",
+};
+const FOE_SHEETS = {
+  small: "art/foes/chiri/sheet.png",
+  thick: "art/foes/nuppe/sheet.png",
+  brute: "art/foes/go/sheet.png",
+  fly: "art/foes/kama/sheet.png",
 };
 
 const MODES = [
@@ -537,6 +543,9 @@ function bootArena() {
     preload() {
       const path = SHEETS[mate.id];
       if (path) this.load.spritesheet("mate", path, { frameWidth: 160, frameHeight: 160 });
+      Object.entries(FOE_SHEETS).forEach(([job, p]) => {
+        this.load.spritesheet(`foe-${job}`, p, { frameWidth: 160, frameHeight: 160 });
+      });
     }
     create() {
       this.ended = false;
@@ -552,6 +561,16 @@ function bootArena() {
       this.look = "right";
       this.cameras.main.setBackgroundColor(stage.bg);
       this.bakeMarks();
+      ["small", "thick", "brute", "fly"].forEach((job) => {
+        const key = `foe-${job}`;
+        if (!this.textures.exists(key)) return;
+        this.anims.create({
+          key: `${key}-run`,
+          frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
+          frameRate: job === "brute" ? 6 : job === "thick" ? 5 : 9,
+          repeat: -1,
+        });
+      });
       const w = this.scale.width;
       const h = this.scale.height;
       if (this.hasSprite) {
@@ -870,9 +889,20 @@ function bootArena() {
       const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
       const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
       const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "well" ? 18 : job === "fly" || job === "rebound" ? 12 : 14;
-      const foe = this.physics.add.sprite(x, y, boss ? "mark-boss" : "mark-foe");
+      const artKey = !boss && FOE_SHEETS[job] ? `foe-${job}` : null;
+      const art = !!(artKey && this.textures.exists(artKey));
+      const foe = this.physics.add.sprite(x, y, art ? artKey : boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
-      foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
+      foe.art = art;
+      if (art) {
+        const sc = job === "small" ? 0.4 : job === "thick" ? 0.58 : job === "brute" ? 0.5 : 0.46;
+        foe.setScale(sc);
+        const rad = job === "small" ? 28 : job === "thick" ? 44 : job === "brute" ? 34 : 30;
+        foe.body.setCircle(rad, 80 - rad, 80 - rad);
+        foe.play(`${artKey}-run`);
+      } else {
+        foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
+      }
       const late = this.left <= 15 ? 1.5 : 1;
       if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
@@ -889,7 +919,7 @@ function bootArena() {
       foe.lunge = 0;
       foe.shotAcc = 0;
       foe.pulling = 0;
-      if (!boss) {
+      if (!boss && !art) {
         foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "well" ? 1.4 : job === "fly" || job === "rebound" ? 0.88 : 1);
         if (job === "brute") foe.setTint(0x2a1040);
         if (job === "fly") foe.setTint(0x39f0ff);
@@ -1504,7 +1534,7 @@ function bootArena() {
             f.wind -= delta;
             this.physics.moveToObject(f, this.player, 10);
             if (f.wind <= 0) {
-              f.setTint(0x2a1040);
+              f.clearTint();
               f.lunge = 240;
             }
           } else if (f.lunge > 0) {
@@ -1561,7 +1591,11 @@ function bootArena() {
         } else {
           this.physics.moveToObject(f, this.player, f.spd || 70);
         }
-        f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
+        if (!f.art) f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
+        else if (f.body && f.body.velocity) {
+          if (f.body.velocity.x > 18) f.setFlipX(true);
+          else if (f.body.velocity.x < -18) f.setFlipX(false);
+        }
         const reach = f.boss ? 54 : f.job === "small" ? 28 : f.job === "brute" ? 40 : 34;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (f.job === "well") {
