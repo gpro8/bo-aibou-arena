@@ -1,4 +1,4 @@
-const VERSION = "0.4.36";
+const VERSION = "0.4.37";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -941,6 +941,13 @@ function bootArena() {
     clearDashLane() {
       if (this.dashLane) this.dashLane.clear();
     }
+    wellSucking() {
+      let yes = false;
+      this.foes.children.iterate((o) => {
+        if (o && o.active && o.job === "well" && o.pulling > 0) yes = true;
+      });
+      return yes;
+    }
     laneLen(x, y, ang) {
       const w = this.scale.width;
       const h = this.scale.height;
@@ -1452,7 +1459,7 @@ function bootArena() {
           f.dashCd = f.dashCd || 0;
           if (f.dashCd > 0) f.dashCd -= delta;
           if (d < 180 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
-            f.wind = 560;
+            f.wind = 500;
             f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
             f.dashOx = f.x;
             f.dashOy = f.y;
@@ -1467,12 +1474,12 @@ function bootArena() {
             if (f.wind <= 0) {
               f.clearTint();
               f.lunge = 1;
+              this.clearDashLane();
             }
           } else if (f.lunge > 0) {
             const spd = 520 * mode.pace;
             f.body.setVelocity(Math.cos(f.dashAng) * spd, Math.sin(f.dashAng) * spd);
             f.dashDist = (f.dashDist || 0) + spd * (delta / 1000);
-            this.paintDashLane(f, true);
             const w = this.scale.width;
             const h = this.scale.height;
             const off = f.x < 12 || f.y < 12 || f.x > w - 12 || f.y > h - 12;
@@ -1482,8 +1489,9 @@ function bootArena() {
               f.body.setVelocity(0, 0);
               f.x = Phaser.Math.Clamp(f.x, 24, w - 24);
               f.y = Phaser.Math.Clamp(f.y, 24, h - 24);
-              this.clearDashLane();
             }
+          } else if (this.wellSucking()) {
+            f.body.setVelocity(0, 0);
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 80);
           }
@@ -1532,7 +1540,7 @@ function bootArena() {
             this.player.x += (f.x - this.player.x) * 0.045;
             this.player.y += (f.y - this.player.y) * 0.045;
             this.foes.children.iterate((o) => {
-              if (!o || o === f || o.boss) return;
+              if (!o || o === f || o.boss || o.job === "boss") return;
               o.x += (f.x - o.x) * 0.03;
               o.y += (f.y - o.y) * 0.03;
             });
