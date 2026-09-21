@@ -1,4 +1,4 @@
-const VERSION = "0.4.37";
+const VERSION = "0.4.38";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -958,7 +958,7 @@ function bootArena() {
       else if (c < -0.02) t = Math.min(t, (18 - x) / c);
       if (s > 0.02) t = Math.min(t, (h - 18 - y) / s);
       else if (s < -0.02) t = Math.min(t, (18 - y) / s);
-      return Math.max(240, Math.min(t, 900));
+      return Math.max(200, Math.min(t, 900) * (2 / 3));
     }
     dropGem(x, y) {
       const gem = this.physics.add.sprite(x, y, "mark-flag");
