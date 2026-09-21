@@ -1,4 +1,4 @@
-const VERSION = "0.4.41";
+const VERSION = "0.4.42";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -906,9 +906,9 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.5 : 0.46;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : 0.46;
         foe.setScale(sc);
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 34 : 30;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : 30;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         foe.play(`${artKey}-run`);
       } else {
