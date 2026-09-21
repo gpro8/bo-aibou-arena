@@ -1,4 +1,4 @@
-const VERSION = "0.4.40";
+const VERSION = "0.4.41";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -832,6 +832,17 @@ function bootArena() {
       diamond(foe, 16, 16, 13, stage.foe, 0x1b1916);
       foe.generateTexture("mark-foe", 32, 32);
       foe.destroy();
+      const slash = this.make.graphics({ add: false });
+      slash.lineStyle(5, 0x39f0ff, 0.95);
+      slash.beginPath();
+      slash.arc(16, 16, 11, -0.4, 2.2);
+      slash.strokePath();
+      slash.lineStyle(2, 0xffffff, 0.85);
+      slash.beginPath();
+      slash.arc(16, 16, 7, -0.2, 2.0);
+      slash.strokePath();
+      slash.generateTexture("mark-kama", 32, 32);
+      slash.destroy();
       const boss = this.make.graphics({ add: false });
       boss.fillStyle(0x1a1018, 1);
       boss.fillCircle(32, 32, 28);
@@ -895,9 +906,9 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.4 : job === "thick" ? 0.58 : job === "brute" ? 0.5 : 0.46;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.5 : 0.46;
         foe.setScale(sc);
-        const rad = job === "small" ? 28 : job === "thick" ? 44 : job === "brute" ? 34 : 30;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 34 : 30;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         foe.play(`${artKey}-run`);
       } else {
@@ -932,15 +943,18 @@ function bootArena() {
       if (!from || !from.active || !this.player) return;
       if (this.bolts.countActive(true) >= 4) return;
       const rebound = from.job === "rebound";
-      const b = this.physics.add.sprite(from.x, from.y, "mark-foe");
-      b.setScale(0.42);
-      b.setTint(rebound ? 0xff9a3a : 0x39f0ff);
+      const kama = from.job === "fly";
+      const b = this.physics.add.sprite(from.x, from.y, kama ? "mark-kama" : "mark-foe");
+      b.setScale(kama ? 0.95 : 0.42);
+      if (!kama) b.setTint(rebound ? 0xff9a3a : 0x39f0ff);
+      b.kama = kama;
       b.setDepth(7);
       b.body.setCircle(6, 4, 4);
       b.life = rebound ? 1200 : 900;
       b.bounce = rebound ? 1 : 0;
       b.iframes = 0;
       this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
+      if (kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
       this.bolts.add(b);
     }
     paintDashLane(f, running) {
@@ -1635,7 +1649,8 @@ function bootArena() {
         if (!b || !b.active) return;
         b.life -= delta;
         if (b.iframes > 0) b.iframes -= delta;
-        b.angle += 8;
+        if (b.kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
+        else b.angle += 8;
         if (b.life <= 0) b.destroy();
       });
       this.gems.children.iterate((g) => {
