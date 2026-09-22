@@ -1,4 +1,4 @@
-const VERSION = "0.4.44";
+const VERSION = "0.4.45";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -9,12 +9,16 @@ const FOE_SHEETS = {
   thick: "art/foes/nuppe/sheet.png",
   brute: "art/foes/go/sheet.png",
   fly: "art/foes/kama/sheet.png",
+  rebound: "art/foes/kitsunebi/sheet.png",
+  well: "art/foes/suiko/sheet.png",
 };
 const FOE_NAMES = {
   small: { stem: "chiri", jp: "塵坊", en: "Chiri-bou" },
   thick: { stem: "nuppe", jp: "ぬっぺ", en: "Nuppe" },
   brute: { stem: "go", jp: "剛", en: "TBD" },
   fly: { stem: "kama", jp: "カマイッタ", en: "Kama" },
+  rebound: { stem: "kitsunebi", jp: "狐火", en: "Kitsunebi" },
+  well: { stem: "suiko", jp: "吸い子", en: "Suiko" },
 };
 
 const MODES = [
@@ -567,13 +571,13 @@ function bootArena() {
       this.look = "right";
       this.cameras.main.setBackgroundColor(stage.bg);
       this.bakeMarks();
-      ["small", "thick", "brute", "fly"].forEach((job) => {
+      ["small", "thick", "brute", "fly", "rebound", "well"].forEach((job) => {
         const key = `foe-${job}`;
         if (!this.textures.exists(key)) return;
         this.anims.create({
           key: `${key}-run`,
           frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
-          frameRate: job === "brute" ? 6 : job === "thick" ? 5 : 9,
+          frameRate: job === "well" ? 4 : job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
           repeat: -1,
         });
       });
@@ -911,9 +915,10 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : 0.36;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.26 : job === "rebound" ? 0.30 : 0.36;
         foe.setScale(sc);
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : 26;
+        foe.baseScale = sc;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 24 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         foe.play(`${artKey}-run`);
       } else {
@@ -1125,6 +1130,28 @@ function bootArena() {
         alpha: 0,
         duration: 640,
         onComplete: () => r.destroy(),
+      });
+    }
+    wellSuckFx(f) {
+      if (!f || !f.active) return;
+      const key = f.texture && f.texture.key;
+      if (f.art && key) {
+        const ov = this.add.sprite(f.x, f.y, key, f.frame ? f.frame.name : undefined);
+        ov.setTintFill(0x6b2dff);
+        ov.setAlpha(0.42);
+        ov.setScale(f.scaleX, f.scaleY);
+        ov.setDepth((f.depth || 4) + 1);
+        this.tweens.add({ targets: ov, alpha: 0, duration: 200, onComplete: () => ov.destroy() });
+      }
+      const ring = this.add.circle(f.x, f.y, 34, 0x1a0828, 0.32);
+      ring.setStrokeStyle(3, 0xb44dff, 0.9);
+      ring.setDepth(3);
+      this.tweens.add({
+        targets: ring,
+        scale: 2.2,
+        alpha: 0,
+        duration: 360,
+        onComplete: () => ring.destroy(),
       });
     }
     flash(foe) {
@@ -1592,10 +1619,23 @@ function bootArena() {
           if (f.shotAcc > 1200 && f.pulling <= 0) {
             f.shotAcc = 0;
             f.pulling = 400;
-            f.setScale(1.55);
+            f.suckFx = 0;
+            const base = f.baseScale || (f.art ? f.scaleX : 1.4);
+            f.baseScale = base;
+            if (f.art) {
+              f.anims.stop();
+              f.setFrame(2);
+              f.setScale(base * 1.06);
+            } else f.setScale(1.55);
+            this.wellSuckFx(f);
           }
           if (f.pulling > 0) {
             f.pulling -= delta;
+            f.suckFx = (f.suckFx || 0) + delta;
+            if (f.suckFx > 90) {
+              f.suckFx = 0;
+              this.wellSuckFx(f);
+            }
             this.player.x += (f.x - this.player.x) * 0.045;
             this.player.y += (f.y - this.player.y) * 0.045;
             this.foes.children.iterate((o) => {
@@ -1604,7 +1644,10 @@ function bootArena() {
               o.y += (f.y - o.y) * 0.03;
             });
             if (f.pulling <= 0) {
-              f.setScale(1.4);
+              if (f.art) {
+                f.setScale(f.baseScale);
+                f.play("foe-well-run");
+              } else f.setScale(1.4);
               const popR = 72;
               if (d < popR) {
                 const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
@@ -1621,7 +1664,7 @@ function bootArena() {
           this.physics.moveToObject(f, this.player, f.spd || 70);
         }
         if (!f.art) f.angle += (f.boss ? -0.8 : 1.6) * (delta / 16);
-        else if (f.body && f.body.velocity) {
+        else if (f.job !== "well" && f.body && f.body.velocity) {
           if (f.body.velocity.x > 18) f.setFlipX(true);
           else if (f.body.velocity.x < -18) f.setFlipX(false);
         }
