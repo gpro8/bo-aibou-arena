@@ -28,7 +28,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"相棒あそび","inLanguage":"ja","url":"https://gpro8.github.io/bo-aibou-arena/","description":"BushiDAOの相棒あそび。図鑑の相棒と走る。入場・参加無料。金銭は出ない。","genre":"Action","playMode":"SinglePlayer","isAccessibleForFree":true,"publisher":{"@type":"Organization","name":"BushiDAO"}}
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.47">
+  <link rel="stylesheet" href="styles.css?v=0.4.48">
 </head>
 <body>
   <div id="app">
@@ -119,8 +119,12 @@
         <p class="hint">横にしてから走る</p>
         <p class="hint">全画面はホーム画面に追加</p>
       </div>
+      <div id="ready" class="hidden">
+        <p data-ready-txt>準備中</p>
+        <span class="readybar"><i data-ready-bar></i></span>
+      </div>
       <div id="bosshp" class="hidden">
-        <span>影の親玉</span>
+        <span class="bosslabel">影の親玉</span>
         <span class="hpbar boss"><i data-boss-hpbar></i></span>
       </div>
       <div id="pause-ov" class="hidden">
@@ -156,6 +160,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.47"></script>
+  <script src="app.js?v=0.4.48"></script>
 </body>
 </html>

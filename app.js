@@ -1,4 +1,4 @@
-const VERSION = "0.4.47";
+const VERSION = "0.4.48";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -30,6 +30,7 @@ const STAGES = [
   { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
 ];
 const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
+const WELL_PAD = 30;
 function buzz(pat) {
   try {
     if (navigator.vibrate) navigator.vibrate(pat);
@@ -161,6 +162,14 @@ function enterPlay() {
   if (play) play.classList.remove("combo");
   applyStickSide();
   show("play");
+  const ready = $("#ready");
+  const readyTxt = $("[data-ready-txt]");
+  const readyBar = $("[data-ready-bar]");
+  if (ready) ready.classList.remove("hidden");
+  if (readyTxt) readyTxt.textContent = "準備中";
+  if (readyBar) readyBar.style.width = "12%";
+  document.body.classList.toggle("yang", state.stage && state.stage.id === "yang");
+  document.body.classList.toggle("yin", state.stage && state.stage.id === "yin");
   state.pendingPlay = true;
   tryFullscreen();
   syncPlayGate();
@@ -556,6 +565,12 @@ function bootArena() {
       Object.entries(FOE_SHEETS).forEach(([job, p]) => {
         this.load.spritesheet(`foe-${job}`, p, { frameWidth: 160, frameHeight: 160 });
       });
+      this.load.on("progress", (v) => {
+        const bar = $("[data-ready-bar]");
+        const txt = $("[data-ready-txt]");
+        if (bar) bar.style.width = `${Math.max(12, Math.round(v * 100))}%`;
+        if (txt) txt.textContent = "準備中";
+      });
     }
     create() {
       this.ended = false;
@@ -609,6 +624,16 @@ function bootArena() {
         this.player.body.setCircle(16);
       }
       this.player.body.setCollideWorldBounds(true);
+      this.physics.world.pause();
+      const readyTxt = $("[data-ready-txt]");
+      const readyBar = $("[data-ready-bar]");
+      if (readyBar) readyBar.style.width = "100%";
+      if (readyTxt) readyTxt.textContent = "はじまる";
+      this.time.delayedCall(560, () => {
+        const ov = $("#ready");
+        if (ov) ov.classList.add("hidden");
+        if (this.physics && this.physics.world) this.physics.world.resume();
+      });
       this.cursors = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT");
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
@@ -931,7 +956,7 @@ function bootArena() {
       }
       const w = this.scale.width;
       const h = this.scale.height;
-      const pad = job === "well" ? 14 : 20;
+      const pad = job === "well" ? WELL_PAD : 20;
       let x;
       let y;
       if (job === "well") {
@@ -1656,7 +1681,7 @@ function bootArena() {
           }
         } else if (f.job === "well") {
           f.shotAcc = (f.shotAcc || 0) + delta;
-          const pad = 14;
+          const pad = WELL_PAD;
           const ww = this.scale.width;
           const hh = this.scale.height;
           const tx = this.player.x < ww / 2 ? ww - pad : pad;
