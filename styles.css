@@ -86,14 +86,21 @@ html:-webkit-full-screen #raise-ov * {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 11px;
-  color: rgba(248, 181, 0, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #3a2208;
   text-align: center;
-  text-shadow: 0 0 6px #12100e;
+  text-shadow:
+    -1px -1px 0 #fff8e8,
+    1px -1px 0 #fff8e8,
+    -1px 1px 0 #fff8e8,
+    1px 1px 0 #fff8e8,
+    0 0 4px #fff4a3;
 }
 #bosshp.hidden { display: none !important; }
-#bosshp.hit { filter: drop-shadow(0 0 8px #f8b500); }
-#bosshp.rage { filter: drop-shadow(0 0 10px #ff3d8a); }
+#bosshp.hit .hpbar { box-shadow: 0 0 12px #f8b500; }
+#bosshp.rage .hpbar { box-shadow: 0 0 14px #ff3d8a; }
 #bosshp .hpbar {
   width: 100%;
   flex: 1 1 auto;

@@ -1,4 +1,4 @@
-const VERSION = "0.4.45";
+const VERSION = "0.4.46";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -574,10 +574,19 @@ function bootArena() {
       ["small", "thick", "brute", "fly", "rebound", "well"].forEach((job) => {
         const key = `foe-${job}`;
         if (!this.textures.exists(key)) return;
+        if (job === "well") {
+          this.anims.create({
+            key: `${key}-rise`,
+            frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
+            frameRate: 9,
+            repeat: 0,
+          });
+          return;
+        }
         this.anims.create({
           key: `${key}-run`,
           frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
-          frameRate: job === "well" ? 4 : job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
+          frameRate: job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
           repeat: -1,
         });
       });
@@ -852,6 +861,23 @@ function bootArena() {
       slash.strokePath();
       slash.generateTexture("mark-kama", 32, 32);
       slash.destroy();
+      const flame = this.make.graphics({ add: false });
+      flame.fillStyle(0xe22a00, 1);
+      flame.beginPath();
+      flame.moveTo(30, 16);
+      flame.lineTo(10, 6);
+      flame.lineTo(4, 16);
+      flame.lineTo(10, 26);
+      flame.closePath();
+      flame.fillPath();
+      flame.fillStyle(0xff6a1a, 1);
+      flame.fillCircle(12, 16, 7);
+      flame.fillStyle(0xffc14a, 1);
+      flame.fillCircle(10, 16, 4);
+      flame.fillStyle(0xfff4a3, 1);
+      flame.fillCircle(8, 16, 2);
+      flame.generateTexture("mark-fire", 32, 32);
+      flame.destroy();
       const boss = this.make.graphics({ add: false });
       boss.fillStyle(0x1a1018, 1);
       boss.fillCircle(32, 32, 28);
@@ -905,9 +931,17 @@ function bootArena() {
       }
       const w = this.scale.width;
       const h = this.scale.height;
-      const edge = Phaser.Math.Between(0, 3);
-      const x = edge === 0 ? 20 : edge === 1 ? w - 20 : Phaser.Math.Between(20, w - 20);
-      const y = edge === 2 ? 20 : edge === 3 ? h - 20 : Phaser.Math.Between(20, h - 20);
+      const pad = job === "well" ? 14 : 20;
+      let x;
+      let y;
+      if (job === "well") {
+        x = Phaser.Math.Between(pad, w - pad);
+        y = Phaser.Math.Between(pad, h - pad);
+      } else {
+        const edge = Phaser.Math.Between(0, 3);
+        x = edge === 0 ? pad : edge === 1 ? w - pad : Phaser.Math.Between(pad, w - pad);
+        y = edge === 2 ? pad : edge === 3 ? h - pad : Phaser.Math.Between(pad, h - pad);
+      }
       const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "well" ? 18 : job === "fly" || job === "rebound" ? 12 : 14;
       const artKey = !boss && FOE_SHEETS[job] ? `foe-${job}` : null;
       const art = !!(artKey && this.textures.exists(artKey));
@@ -915,12 +949,13 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.26 : job === "rebound" ? 0.30 : 0.36;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.30 : 0.36;
         foe.setScale(sc);
         foe.baseScale = sc;
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 24 : 26;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
-        foe.play(`${artKey}-run`);
+        if (job === "well") foe.setFrame(0);
+        else foe.play(`${artKey}-run`);
       } else {
         foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
       }
@@ -954,10 +989,12 @@ function bootArena() {
       if (this.bolts.countActive(true) >= 4) return;
       const rebound = from.job === "rebound";
       const kama = from.job === "fly";
-      const b = this.physics.add.sprite(from.x, from.y, kama ? "mark-kama" : "mark-foe");
-      b.setScale(kama ? 0.95 : 0.42);
-      if (!kama) b.setTint(rebound ? 0xff9a3a : 0x39f0ff);
+      const tex = kama ? "mark-kama" : rebound ? "mark-fire" : "mark-foe";
+      const b = this.physics.add.sprite(from.x, from.y, tex);
+      b.setScale(kama ? 0.95 : rebound ? 0.82 : 0.42);
+      if (!kama && !rebound) b.setTint(0x39f0ff);
       b.kama = kama;
+      b.fire = rebound;
       b.setDepth(7);
       b.body.setCircle(6, 4, 4);
       b.life = rebound ? 1200 : 900;
@@ -965,6 +1002,7 @@ function bootArena() {
       b.iframes = 0;
       this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
       if (kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
+      if (rebound && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
       this.bolts.add(b);
     }
     paintDashLane(f, running) {
@@ -1616,6 +1654,8 @@ function bootArena() {
         } else if (f.job === "well") {
           f.shotAcc = (f.shotAcc || 0) + delta;
           this.physics.moveToObject(f, this.player, f.spd || 24);
+          f.x = Phaser.Math.Clamp(f.x, 14, this.scale.width - 14);
+          f.y = Phaser.Math.Clamp(f.y, 14, this.scale.height - 14);
           if (f.shotAcc > 1200 && f.pulling <= 0) {
             f.shotAcc = 0;
             f.pulling = 400;
@@ -1624,8 +1664,8 @@ function bootArena() {
             f.baseScale = base;
             if (f.art) {
               f.anims.stop();
-              f.setFrame(2);
-              f.setScale(base * 1.06);
+              f.play("foe-well-rise");
+              f.setScale(base * 1.04);
             } else f.setScale(1.55);
             this.wellSuckFx(f);
           }
@@ -1645,8 +1685,9 @@ function bootArena() {
             });
             if (f.pulling <= 0) {
               if (f.art) {
+                f.anims.stop();
                 f.setScale(f.baseScale);
-                f.play("foe-well-run");
+                f.setFrame(0);
               } else f.setScale(1.4);
               const popR = 72;
               if (d < popR) {
@@ -1708,6 +1749,7 @@ function bootArena() {
         b.life -= delta;
         if (b.iframes > 0) b.iframes -= delta;
         if (b.kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
+        else if (b.fire && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
         else b.angle += 8;
         if (b.life <= 0) b.destroy();
       });
