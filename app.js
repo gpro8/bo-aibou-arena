@@ -1,4 +1,4 @@
-const VERSION = "0.4.46";
+const VERSION = "0.4.47";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -935,8 +935,10 @@ function bootArena() {
       let x;
       let y;
       if (job === "well") {
-        x = Phaser.Math.Between(pad, w - pad);
-        y = Phaser.Math.Between(pad, h - pad);
+        const px = this.player ? this.player.x : w / 2;
+        const py = this.player ? this.player.y : h / 2;
+        x = px < w / 2 ? w - pad : pad;
+        y = py < h / 2 ? h - pad : pad;
       } else {
         const edge = Phaser.Math.Between(0, 3);
         x = edge === 0 ? pad : edge === 1 ? w - pad : Phaser.Math.Between(pad, w - pad);
@@ -1232,6 +1234,7 @@ function bootArena() {
     hurtFoe(foe, dmg, popSize) {
       if (!foe.active) return;
       this.flash(foe);
+      if (foe.boss) dmg = Math.max(1, Math.ceil(dmg * 0.7));
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
       if (foe.boss && foe.hp > 0) {
@@ -1653,9 +1656,15 @@ function bootArena() {
           }
         } else if (f.job === "well") {
           f.shotAcc = (f.shotAcc || 0) + delta;
-          this.physics.moveToObject(f, this.player, f.spd || 24);
-          f.x = Phaser.Math.Clamp(f.x, 14, this.scale.width - 14);
-          f.y = Phaser.Math.Clamp(f.y, 14, this.scale.height - 14);
+          const pad = 14;
+          const ww = this.scale.width;
+          const hh = this.scale.height;
+          const tx = this.player.x < ww / 2 ? ww - pad : pad;
+          const ty = this.player.y < hh / 2 ? hh - pad : pad;
+          if (f.pulling > 0) f.body.setVelocity(0, 0);
+          else this.physics.moveTo(f, tx, ty, f.spd || 24);
+          f.x = Phaser.Math.Clamp(f.x, pad, ww - pad);
+          f.y = Phaser.Math.Clamp(f.y, pad, hh - pad);
           if (f.shotAcc > 1200 && f.pulling <= 0) {
             f.shotAcc = 0;
             f.pulling = 400;

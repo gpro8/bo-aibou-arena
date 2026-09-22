@@ -86,17 +86,24 @@ html:-webkit-full-screen #raise-ov * {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #3a2208;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #1a1008;
+  -webkit-text-fill-color: #1a1008;
   text-align: center;
+  text-shadow: none;
+}
+#bosshp > span:first-child {
+  color: #1a1008;
+  -webkit-text-fill-color: #1a1008;
+  -webkit-text-stroke: 0;
+  paint-order: fill;
   text-shadow:
-    -1px -1px 0 #fff8e8,
-    1px -1px 0 #fff8e8,
-    -1px 1px 0 #fff8e8,
-    1px 1px 0 #fff8e8,
-    0 0 4px #fff4a3;
+    -1px 0 0 #fff8e8,
+    1px 0 0 #fff8e8,
+    0 -1px 0 #fff8e8,
+    0 1px 0 #fff8e8;
 }
 #bosshp.hidden { display: none !important; }
 #bosshp.hit .hpbar { box-shadow: 0 0 12px #f8b500; }
