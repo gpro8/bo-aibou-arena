@@ -1,4 +1,4 @@
-const VERSION = "0.4.49";
+const VERSION = "0.4.50";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -66,7 +66,7 @@ function kit(e) {
     hp: 36,
     speed: 155,
     rate: 520,
-    skill: field(e, "特技") || "ふわふわで癒す",
+    skill: "ふわふわ",
     kind: "puff",
     bob: true,
     dmg: 6,
@@ -128,6 +128,11 @@ function show(name) {
 
 function isCoarse() {
   return window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+}
+
+function wellPad(w, h) {
+  if (isCoarse()) return Math.max(72, Math.round(Math.min(w, h) * 0.2));
+  return WELL_PAD;
 }
 
 function isLandscape() {
@@ -770,10 +775,25 @@ function bootArena() {
         else if (this.hp > this.prevHp + 0.05) this.pulseHp("heal", this.hp - this.prevHp);
       }
       this.prevHp = this.hp;
-      hud.lv.textContent = `lv ${this.lv}  ${this.xp}/${this.next}`;
-      hud.combo.textContent = this.combo > 1 ? `連 ${this.combo}` : "";
-      if (hud.graze) hud.graze.textContent = this.grazeStreak > 0 ? `かわし ${this.grazeStreak}` : "";
-      if (hud.score) hud.score.textContent = `記録 ${this.liveScore()}`;
+      hud.lv.textContent = `lv ${this.lv}`;
+      const comboTxt = this.combo > 1 ? `連 ${this.combo}` : "";
+      if (hud.combo.textContent !== comboTxt) {
+        hud.combo.textContent = comboTxt;
+        hud.combo.classList.toggle("hidden", !comboTxt);
+      }
+      const grazeTxt = this.grazeStreak > 0 ? `かわし ${this.grazeStreak}` : "";
+      if (hud.graze && hud.graze.textContent !== grazeTxt) {
+        hud.graze.textContent = grazeTxt;
+        hud.graze.classList.toggle("hidden", !grazeTxt);
+      }
+      if (hud.score) {
+        const sc = this.liveScore();
+        const scoreTxt = sc > 0 ? `記録 ${sc}` : "";
+        if (hud.score.textContent !== scoreTxt) {
+          hud.score.textContent = scoreTxt;
+          hud.score.classList.toggle("hidden", !scoreTxt);
+        }
+      }
       const tnow = this.time ? this.time.now : 0;
       const chip = $("[data-buffchip]");
       const bbar = $("[data-buff-bar]");
@@ -792,7 +812,7 @@ function bootArena() {
         if (hud.buff) hud.buff.textContent = `${top.n} ${Math.ceil(top.t / 1000)}`;
         if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (top.t / this.buffMax) * 100))}%`;
       } else if (hud.buff) hud.buff.textContent = "";
-      hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
+      hud.skill.textContent = k.skill;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
     }
@@ -900,20 +920,14 @@ function bootArena() {
       slash.generateTexture("mark-kama", 32, 32);
       slash.destroy();
       const flame = this.make.graphics({ add: false });
-      flame.fillStyle(0xe22a00, 1);
-      flame.beginPath();
-      flame.moveTo(30, 16);
-      flame.lineTo(10, 6);
-      flame.lineTo(4, 16);
-      flame.lineTo(10, 26);
-      flame.closePath();
-      flame.fillPath();
+      flame.fillStyle(0xe22a00, 0.95);
+      flame.fillCircle(16, 16, 12);
       flame.fillStyle(0xff6a1a, 1);
-      flame.fillCircle(12, 16, 7);
+      flame.fillCircle(16, 16, 8);
       flame.fillStyle(0xffc14a, 1);
-      flame.fillCircle(10, 16, 4);
+      flame.fillCircle(16, 15, 5);
       flame.fillStyle(0xfff4a3, 1);
-      flame.fillCircle(8, 16, 2);
+      flame.fillCircle(14, 13, 2);
       flame.generateTexture("mark-fire", 32, 32);
       flame.destroy();
       const boss = this.make.graphics({ add: false });
@@ -969,7 +983,7 @@ function bootArena() {
       }
       const w = this.scale.width;
       const h = this.scale.height;
-      const pad = job === "well" ? WELL_PAD : 20;
+      const pad = job === "well" ? wellPad(w, h) : 20;
       let x;
       let y;
       if (job === "well") {
@@ -989,10 +1003,10 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.30 : job === "boss" ? 0.52 : 0.36;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.20 : job === "boss" ? 1.04 : 0.36;
         foe.setScale(sc);
         foe.baseScale = sc;
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : job === "boss" ? 36 : 26;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : job === "boss" ? 72 : job === "rebound" ? 18 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         if (job === "well") foe.setFrame(0);
         else foe.play(`${artKey}-run`);
@@ -1031,7 +1045,7 @@ function bootArena() {
       const kama = from.job === "fly";
       const tex = kama ? "mark-kama" : rebound ? "mark-fire" : "mark-foe";
       const b = this.physics.add.sprite(from.x, from.y, tex);
-      b.setScale(kama ? 0.95 : rebound ? 0.82 : 0.42);
+      b.setScale(kama ? 0.95 : rebound ? 0.55 : 0.42);
       if (!kama && !rebound) b.setTint(0x39f0ff);
       b.kama = kama;
       b.fire = rebound;
@@ -1042,7 +1056,6 @@ function bootArena() {
       b.iframes = 0;
       this.physics.moveToObject(b, this.player, rebound ? 170 : 190);
       if (kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
-      if (rebound && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
       this.bolts.add(b);
     }
     paintDashLane(f, running) {
@@ -1694,9 +1707,9 @@ function bootArena() {
           }
         } else if (f.job === "well") {
           f.shotAcc = (f.shotAcc || 0) + delta;
-          const pad = WELL_PAD;
           const ww = this.scale.width;
           const hh = this.scale.height;
+          const pad = wellPad(ww, hh);
           const tx = this.player.x < ww / 2 ? ww - pad : pad;
           const ty = this.player.y < hh / 2 ? hh - pad : pad;
           if (f.pulling > 0) f.body.setVelocity(0, 0);
@@ -1796,8 +1809,7 @@ function bootArena() {
         b.life -= delta;
         if (b.iframes > 0) b.iframes -= delta;
         if (b.kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
-        else if (b.fire && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
-        else b.angle += 8;
+        else if (!b.fire) b.angle += 8;
         if (b.life <= 0) b.destroy();
       });
       this.gems.children.iterate((g) => {

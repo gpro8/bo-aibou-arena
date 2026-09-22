@@ -28,7 +28,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"相棒あそび","inLanguage":"ja","url":"https://gpro8.github.io/bo-aibou-arena/","description":"BushiDAOの相棒あそび。図鑑の相棒と走る。入場・参加無料。金銭は出ない。","genre":"Action","playMode":"SinglePlayer","isAccessibleForFree":true,"publisher":{"@type":"Organization","name":"BushiDAO"}}
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.49">
+  <link rel="stylesheet" href="styles.css?v=0.4.50">
 </head>
 <body>
   <div id="app">
@@ -102,14 +102,14 @@
           <span class="hpbar"><i data-hud-hpbar></i></span>
         </span>
         <span data-hud-lv></span>
-        <span data-hud-combo></span>
-        <span data-hud-graze></span>
+        <span data-hud-combo class="hidden"></span>
+        <span data-hud-graze class="hidden"></span>
         <span data-hud-score></span>
         <span class="hpchip hidden" data-buffchip>
           <span data-hud-buff></span>
           <span class="hpbar buff"><i data-buff-bar></i></span>
         </span>
-        <button type="button" class="btn tiny" data-pause>一時停止</button>
+        <button type="button" class="btn tiny pause" data-pause aria-label="一時停止"><i></i><i></i></button>
       </div>
       <div id="fx"></div>
       <div id="arena"></div>
@@ -163,6 +163,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.49"></script>
+  <script src="app.js?v=0.4.50"></script>
 </body>
 </html>

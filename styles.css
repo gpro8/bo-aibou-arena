@@ -284,12 +284,12 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   right: 0;
   z-index: 3;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
+  flex-wrap: nowrap;
+  gap: 4px 6px;
   align-items: center;
-  padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 10px calc(12px + var(--safe-l));
+  padding: calc(6px + var(--safe-t)) calc(10px + var(--safe-r)) 8px calc(10px + var(--safe-l));
   background: transparent;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff8e8;
   text-shadow: 0 1px 2px #000, 0 0 8px #000;
@@ -308,6 +308,25 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   gap: 8px;
 }
 #hud .btn { pointer-events: auto; }
+#hud .pause {
+  margin-left: auto;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+#hud .pause i {
+  display: block;
+  width: 4px;
+  height: 14px;
+  background: #fff8e8;
+  border-radius: 1px;
+}
 #hud [data-hud-skill],
 #hud [data-hud-combo],
 #hud [data-hud-buff] { color: var(--gold); }
