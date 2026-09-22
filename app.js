@@ -1,4 +1,4 @@
-const VERSION = "0.4.48";
+const VERSION = "0.4.49";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -11,6 +11,7 @@ const FOE_SHEETS = {
   fly: "art/foes/kama/sheet.png",
   rebound: "art/foes/kitsunebi/sheet.png",
   well: "art/foes/suiko/sheet.png",
+  boss: "art/foes/gyuki/sheet.png",
 };
 const FOE_NAMES = {
   small: { stem: "chiri", jp: "塵坊", en: "Chiri-bou" },
@@ -19,6 +20,7 @@ const FOE_NAMES = {
   fly: { stem: "kama", jp: "カマイッタ", en: "Kama" },
   rebound: { stem: "kitsunebi", jp: "狐火", en: "Kitsunebi" },
   well: { stem: "suiko", jp: "吸い子", en: "Suiko" },
+  boss: { stem: "gyuki", jp: "親玉", en: "TBD" },
 };
 
 const MODES = [
@@ -82,6 +84,16 @@ const state = {
   stickSide: "left",
   pendingPlay: false,
 };
+
+function paintBossLabel() {
+  const el = $(".bosslabel");
+  if (!el) return;
+  const yang = state.stage && state.stage.id === "yang";
+  const col = yang ? "#12100e" : "#f8b500";
+  el.style.setProperty("color", col, "important");
+  el.style.setProperty("-webkit-text-fill-color", col, "important");
+  el.style.setProperty("text-shadow", "none", "important");
+}
 
 function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
@@ -170,6 +182,7 @@ function enterPlay() {
   if (readyBar) readyBar.style.width = "12%";
   document.body.classList.toggle("yang", state.stage && state.stage.id === "yang");
   document.body.classList.toggle("yin", state.stage && state.stage.id === "yin");
+  paintBossLabel();
   state.pendingPlay = true;
   tryFullscreen();
   syncPlayGate();
@@ -586,7 +599,7 @@ function bootArena() {
       this.look = "right";
       this.cameras.main.setBackgroundColor(stage.bg);
       this.bakeMarks();
-      ["small", "thick", "brute", "fly", "rebound", "well"].forEach((job) => {
+      ["small", "thick", "brute", "fly", "rebound", "well", "boss"].forEach((job) => {
         const key = `foe-${job}`;
         if (!this.textures.exists(key)) return;
         if (job === "well") {
@@ -601,7 +614,7 @@ function bootArena() {
         this.anims.create({
           key: `${key}-run`,
           frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
-          frameRate: job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
+          frameRate: job === "boss" ? 5 : job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
           repeat: -1,
         });
       });
@@ -970,16 +983,16 @@ function bootArena() {
         y = edge === 2 ? pad : edge === 3 ? h - pad : Phaser.Math.Between(pad, h - pad);
       }
       const r = boss ? 28 : job === "small" ? 10 : job === "brute" ? 16 : job === "well" ? 18 : job === "fly" || job === "rebound" ? 12 : 14;
-      const artKey = !boss && FOE_SHEETS[job] ? `foe-${job}` : null;
+      const artKey = FOE_SHEETS[job] ? `foe-${job}` : null;
       const art = !!(artKey && this.textures.exists(artKey));
       const foe = this.physics.add.sprite(x, y, art ? artKey : boss ? "mark-boss" : "mark-foe");
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.30 : 0.36;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.30 : job === "boss" ? 0.52 : 0.36;
         foe.setScale(sc);
         foe.baseScale = sc;
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : 26;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : job === "boss" ? 36 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         if (job === "well") foe.setFrame(0);
         else foe.play(`${artKey}-run`);
@@ -1805,6 +1818,7 @@ function bootArena() {
       if (bar) {
         bar.classList.toggle("hidden", !boss);
         if (!boss) bar.classList.remove("rage");
+        if (boss) paintBossLabel();
         if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
       }
       if (this.ward && this.ward.active) {
