@@ -1,4 +1,4 @@
-const VERSION = "0.4.55";
+const VERSION = "0.4.56";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -357,19 +357,21 @@ function seenNames(stems) {
 function loadKatsudo() {
   try {
     const o = JSON.parse(localStorage.getItem("bo-aibou-katsudo") || "null");
-    if (!o || typeof o !== "object") return { v: 1, hardClears: 0, days: [], seen: [], title: "" };
+    if (!o || typeof o !== "object") return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
     const days = Array.isArray(o.days) ? o.days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
     const seen = cleanSeen(o.seen);
+    const told = cleanDays(o.told);
     const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
     return {
       v: 1,
       hardClears,
       days,
       seen,
+      told,
       title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
     };
   } catch {
-    return { v: 1, hardClears: 0, days: [], seen: [], title: "" };
+    return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
   }
 }
 
@@ -425,8 +427,9 @@ function mergeKatsudoRemote(remote) {
     .sort();
   const hardClears = Math.max(local.hardClears, Math.max(0, Number(remote.hardClears) || 0));
   const seen = cleanSeen([...(local.seen || []), ...(Array.isArray(remote.seen) ? remote.seen : [])]);
+  const told = cleanDays([...(local.told || []), ...(Array.isArray(remote.told) ? remote.told : [])]);
   const title = local.title === "kitsui-nobiru" || remote.title === "kitsui-nobiru" ? "kitsui-nobiru" : "";
-  const next = { v: 1, days: days.slice(-400), hardClears, seen, title };
+  const next = { v: 1, days: days.slice(-400), hardClears, seen, told, title };
   saveKatsudo(next);
   return next;
 }
@@ -451,6 +454,7 @@ async function pullKatsudo() {
         days: local.days,
         hardClears: local.hardClears,
         seen: local.seen,
+        told: local.told,
         title: local.title,
         version: VERSION,
       }),
@@ -472,6 +476,7 @@ function consumeKatsudoReturn() {
     history.replaceState(null, "", u.pathname + (q ? `?${q}` : "") );
     if (flag === "ok" || tok) {
       show("katsudo");
+      showToast("つながった");
       pullKatsudo();
     } else {
       show("katsudo");
@@ -493,6 +498,7 @@ function rememberSeen(stems) {
         days: o.days,
         hardClears: o.hardClears,
         seen: o.seen,
+        told: o.told,
         title: o.title,
         version: VERSION,
       }),
@@ -520,6 +526,52 @@ function stampHardWin() {
   return { freshDay, hardClears: o.hardClears };
 }
 
+function noteTold() {
+  const run = state.last;
+  if (!run || !run.win || !run.hard) return false;
+  const o = loadKatsudo();
+  const day = jstDay();
+  const fresh = !(o.told || []).includes(day);
+  if (!fresh) return false;
+  o.told = cleanDays([...(o.told || []), day]);
+  saveKatsudo(o);
+  if (loadKatsudoSes()) {
+    katsudoFetch("/v1/sync", {
+      method: "POST",
+      body: JSON.stringify({
+        days: o.days,
+        hardClears: o.hardClears,
+        seen: o.seen,
+        told: o.told,
+        title: o.title,
+        version: VERSION,
+      }),
+    }).catch(() => {});
+  }
+  showToast("語った");
+  paintKatsudo();
+  return true;
+}
+
+let toastTimer = 0;
+function hideToast() {
+  const ov = $("#toast-ov");
+  if (ov) ov.classList.add("hidden");
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = 0;
+  }
+}
+function showToast(msg) {
+  const ov = $("#toast-ov");
+  const el = $("[data-toast-msg]");
+  if (!ov || !el) return;
+  el.textContent = msg || "";
+  ov.classList.remove("hidden");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 2200);
+}
+
 function paintKatsudo() {
   const o = loadKatsudo();
   const has = o.hardClears > 0;
@@ -536,7 +588,13 @@ function paintKatsudo() {
   const seenEl = $("[data-katsudo-seen]");
   if (seenEl) {
     const names = seenNames(o.seen);
-    seenEl.textContent = names.length ? `見た職 ${names.join(" · ")}` : "きついの場で会った職が残る";
+    seenEl.textContent = names.length ? `見た敵の種類 ${names.join(" · ")}` : "きついの場で会った敵の種類が残る";
+  }
+  const toldEl = $("[data-katsudo-told]");
+  if (toldEl) {
+    const n = (o.told || []).length;
+    toldEl.textContent = n ? `語った ${n}日` : "";
+    toldEl.classList.toggle("hidden", !n);
   }
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
@@ -725,6 +783,7 @@ function raiseMsg(s) {
 function raiseFlag() {
   const pack = cardPack();
   if (!pack) return;
+  noteTold();
   if (isCoarse() && navigator.share) {
     const payload =
       navigator.canShare && navigator.canShare({ files: [pack.file] })
@@ -1799,6 +1858,7 @@ function bootArena() {
         kills: this.kills,
         combo: this.maxCombo,
         rec,
+        hard: mode.id === "hard",
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
@@ -2237,6 +2297,10 @@ async function main() {
       killGame();
       if (go.dataset.go === "setup") renderSetup();
       show(go.dataset.go);
+      return;
+    }
+    if (ev.target.closest("#toast-ov")) {
+      hideToast();
       return;
     }
     if (ev.target.closest("[data-katsudo-connect]")) {

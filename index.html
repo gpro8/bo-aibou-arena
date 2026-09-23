@@ -28,7 +28,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"相棒あそび","inLanguage":"ja","url":"https://gpro8.github.io/bo-aibou-arena/","description":"BushiDAOの相棒あそび。図鑑の相棒と走る。入場・参加無料。金銭は出ない。","genre":"Action","playMode":"SinglePlayer","isAccessibleForFree":true,"publisher":{"@type":"Organization","name":"BushiDAO"}}
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.55">
+  <link rel="stylesheet" href="styles.css?v=0.4.56">
 </head>
 <body>
   <div id="app">
@@ -59,7 +59,7 @@
         <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪。弾き。心は減らない）</li>
         <li>親玉の心が半分で半血。突の白い線は予告。走り出したら消える。直撃は大きい。親玉は弾かれない・吸い場にも吸われない。倒すと一息（虹の輪・弾き）</li>
         <li>速さはふつう / きついだけ。lvでは速くならない。終盤は敵が強い</li>
-        <li>きついを生き延びたら記録にボーナス（+50）。この端末の活動記録に日の印と称号。会った職は敵図鑑に見た</li>
+        <li>きついを生き延びたら記録にボーナス（+50）。この端末の活動記録に日の印と称号。会った敵の種類は敵図鑑に見た。𝕏でドヤると語った</li>
         <li>連5で画面の縁が脈打つ。かわしは敵に当たる寸前。HUD（上のステータス）に記録が表示される。被弾でかわしは途切れる</li>
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
@@ -83,6 +83,7 @@
         <p class="hint" data-katsudo-clears></p>
       </div>
       <p class="hint" data-katsudo-seen></p>
+      <p class="hint hidden" data-katsudo-told></p>
       <p class="hint">投票権・Gi・金銭にはなりません</p>
       <p class="hint" data-katsudo-link>この端末に残る。つなぐとDiscordの番号で残す</p>
       <div class="row">
@@ -188,7 +189,10 @@
       </div>
     </section>
   </div>
+  <div id="toast-ov" class="hidden" data-toast>
+    <p data-toast-msg></p>
+  </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.55"></script>
+  <script src="app.js?v=0.4.56"></script>
 </body>
 </html>

@@ -94,6 +94,7 @@ function cleanRecord(raw) {
     v: 1,
     days: cleanDays(o.days),
     seen: cleanSeen(o.seen),
+    told: cleanDays(o.told),
     hardClears,
     title: o.title === "kitsui-nobiru" || hardClears > 0 ? "kitsui-nobiru" : "",
   };
@@ -106,6 +107,7 @@ function publicRecord(rec) {
     linked: true,
     days: r.days,
     seen: r.seen,
+    told: r.told,
     hardClears: r.hardClears,
     title: r.title,
     dayCount: r.days.length,
@@ -240,6 +242,7 @@ async function handleSync(env, request) {
   const rec = await loadUser(env, ses.uid);
   rec.days = cleanDays([...rec.days, ...incoming.days]);
   rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
+  rec.told = cleanDays([...(rec.told || []), ...(incoming.told || [])]);
   rec.hardClears = Math.max(rec.hardClears, Math.min(incoming.hardClears, rec.hardClears + 50));
   if (incoming.title === "kitsui-nobiru" || rec.hardClears > 0) rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
