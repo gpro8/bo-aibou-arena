@@ -197,6 +197,27 @@ h1 { font-size: 28px; margin: 0; font-weight: 700; }
 h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 .blurb, .hint, .thanks { color: var(--muted); margin: 0; line-height: 1.6; }
 .thanks { color: var(--gold); font-size: 18px; }
+.streak {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 8px;
+}
+.streak i {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: transparent;
+}
+.streak i.on {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.streak i.today {
+  box-shadow: 0 0 0 3px rgba(248, 181, 0, 0.38);
+}
 .flag-card {
   width: auto;
   max-width: 360px;

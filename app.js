@@ -1,4 +1,4 @@
-const VERSION = "0.4.58";
+const VERSION = "0.4.59";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -330,6 +330,48 @@ function jstDay() {
   }).format(new Date());
 }
 
+function shiftDay(ymd, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return ymd;
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n));
+  return dt.toISOString().slice(0, 10);
+}
+
+function streakCount(days, today) {
+  const set = new Set(cleanDays(days));
+  let start = today;
+  if (!set.has(start)) start = shiftDay(today, -1);
+  if (!set.has(start)) return 0;
+  let n = 0;
+  let d = start;
+  while (set.has(d)) {
+    n += 1;
+    d = shiftDay(d, -1);
+  }
+  return n;
+}
+
+function weekDays(today) {
+  return [6, 5, 4, 3, 2, 1, 0].map((i) => shiftDay(today, -i));
+}
+
+function streakHonor(n) {
+  if (n >= 30) return "ひと月つづいた";
+  if (n >= 14) return "二週間つづいた";
+  if (n >= 7) return "一週間つづいた";
+  if (n >= 3) return "火がついた";
+  if (n >= 1) return "今日も走った";
+  return "";
+}
+
+function toldHonor(n) {
+  if (n >= 30) return "語りつづける";
+  if (n >= 7) return "仲間を呼ぶ";
+  if (n >= 3) return "声が届く";
+  if (n >= 1) return "語りはじめ";
+  return "𝕏で話すと残る";
+}
+
 function cleanSeen(list) {
   const allow = new Set(SEEN_STEMS);
   const out = [];
@@ -567,6 +609,18 @@ function rememberSeen(stems) {
   return o;
 }
 
+function stampPlayDay() {
+  const o = loadKatsudo();
+  const day = jstDay();
+  const freshDay = !o.days.includes(day);
+  if (freshDay) o.days.push(day);
+  if (o.days.length > 400) o.days = o.days.slice(-400);
+  o.v = 1;
+  saveKatsudo(o);
+  pushKatsudo(o);
+  return { freshDay, streak: streakCount(o.days, day), days: o.days.length };
+}
+
 function stampHardWin() {
   const o = loadKatsudo();
   const day = jstDay();
@@ -588,8 +642,7 @@ function stampHardWin() {
 }
 
 function noteTold() {
-  const run = state.last;
-  if (!run || !run.win || !run.hard) return false;
+  if (!state.last) return false;
   const o = loadKatsudo();
   const day = jstDay();
   const fresh = !(o.told || []).includes(day);
@@ -597,7 +650,9 @@ function noteTold() {
   o.told = cleanDays([...(o.told || []), day]);
   saveKatsudo(o);
   pushKatsudo(o);
-  showToast("語った");
+  const n = o.told.length;
+  const honor = toldHonor(n);
+  showToast(n === 3 || n === 7 || n === 30 ? honor : "語った");
   paintKatsudo();
   return true;
 }
@@ -631,6 +686,35 @@ function paintKatsudo() {
   const title = $("[data-katsudo-title]");
   const days = $("[data-katsudo-days]");
   const clears = $("[data-katsudo-clears]");
+  const today = jstDay();
+  const streak = streakCount(o.days, today);
+  const honor = streakHonor(streak);
+  const week = $("[data-katsudo-week]");
+  if (week) {
+    const set = new Set(o.days);
+    week.innerHTML = weekDays(today)
+      .map((d) => {
+        const on = set.has(d) ? " on" : "";
+        const now = d === today ? " today" : "";
+        return `<i class="${(on + now).trim()}" title="${d}"></i>`;
+      })
+      .join("");
+  }
+  const streakEl = $("[data-katsudo-streak]");
+  if (streakEl) {
+    streakEl.textContent = streak ? `連続 ${streak}日${honor ? ` · ${honor}` : ""}` : "連続 まだ";
+    streakEl.classList.toggle("thanks", streak > 0);
+    streakEl.classList.toggle("hint", streak === 0);
+  }
+  const nudge = $("[data-katsudo-nudge]");
+  if (nudge) {
+    const todayOn = o.days.includes(today);
+    nudge.textContent = todayOn
+      ? "明日も走ると連続が伸びる"
+      : streak
+        ? "今日走ると連続が続く"
+        : "今日走ると印がつく";
+  }
   if (title) {
     title.textContent = has ? "きついを生き延びた" : "まだ";
     title.classList.toggle("thanks", has);
@@ -654,9 +738,18 @@ function paintKatsudo() {
       : "見た敵の種類 まだ";
   }
   const toldEl = $("[data-katsudo-told]");
+  const toldN = (o.told || []).length;
   if (toldEl) {
-    toldEl.textContent = `語った ${(o.told || []).length}日`;
+    toldEl.textContent = `語った ${toldN}日`;
+    toldEl.classList.toggle("thanks", toldN > 0);
+    toldEl.classList.toggle("hint", toldN === 0);
     toldEl.classList.remove("hidden");
+  }
+  const toldHonorEl = $("[data-katsudo-told-honor]");
+  if (toldHonorEl) {
+    toldHonorEl.textContent = toldHonor(toldN);
+    toldHonorEl.classList.toggle("thanks", toldN > 0);
+    toldHonorEl.classList.toggle("hint", toldN === 0);
   }
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
@@ -866,6 +959,7 @@ function raiseFlag() {
 function raiseCopy() {
   const pack = cardPack();
   if (!pack) return;
+  noteTold();
   clickA(pack.tweet);
   const ok = navigator.clipboard && window.ClipboardItem;
   if (!ok) {
@@ -1915,6 +2009,7 @@ function bootArena() {
         }
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
+      const played = stampPlayDay();
       let stamped = null;
       if (win && hard) stamped = stampHardWin();
       state.last = {
@@ -1937,15 +2032,11 @@ function bootArena() {
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
       if (kEl) {
-        if (stamped) {
-          const o = loadKatsudo();
-          kEl.textContent = `日の印 走った日 ${o.days.length}日 · きついクリア ${o.hardClears}回`;
-          kEl.classList.remove("hidden");
-          if (stamped.freshDay) showToast("日の印");
-        } else {
-          kEl.textContent = "";
-          kEl.classList.add("hidden");
-        }
+        const o = loadKatsudo();
+        const st = played.streak;
+        kEl.textContent = `連続 ${st}日 · 走った日 ${o.days.length}日${stamped ? ` · きついクリア ${o.hardClears}回` : ""}`;
+        kEl.classList.remove("hidden");
+        if (played.freshDay) showToast(st >= 3 ? streakHonor(st) || "日の印" : "日の印");
       }
       paintKatsudo();
       paintRec();
