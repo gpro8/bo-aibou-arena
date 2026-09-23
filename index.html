@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.67">
+  <link rel="stylesheet" href="styles.css?v=0.4.68">
 </head>
 <body>
   <div id="app">
@@ -79,7 +79,7 @@
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
-        <li>生き延びたら𝕏でドヤる。やられたら𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
+        <li>新記録のときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
       </ul>
       <div class="row">
         <button type="button" class="btn gold" data-go="title">もどる</button>
@@ -130,8 +130,13 @@
     <section class="screen hidden" data-screen="ba">
       <h1>順位表</h1>
       <p class="hint">誉。投票権・Gi・金銭にはなりません</p>
-      <p class="hint">つなぐと名前と姿が出る。番号は出ない</p>
       <div class="chips">
+        <button type="button" class="chip on" data-ba-tab="ba">記録</button>
+        <button type="button" class="chip" data-ba-tab="nan">七日の走</button>
+      </div>
+      <p class="hint" data-ba-score-hint>つなぐと名前と姿が出る。番号は出ない</p>
+      <p class="hint hidden" data-ba-nan-hint>直近7日（JST）。走った7日で参加。順は語った→きつい→ふつう。記録点は使わない。番号は出ない</p>
+      <div class="chips" data-ba-modes>
         <button type="button" class="chip" data-ba-mode="easy">ふつう</button>
         <button type="button" class="chip on" data-ba-mode="hard">きつい</button>
       </div>
@@ -223,7 +228,7 @@
         <p class="hint" data-result-rec></p>
         <p class="hint hidden" data-result-katsudo></p>
         <div class="col">
-          <button type="button" class="btn gold" data-raise>𝕏でドヤる</button>
+          <button type="button" class="btn gold" data-raise>𝕏でシェアする</button>
           <button type="button" class="btn gold" data-again>もういちど</button>
           <button type="button" class="btn ghost hidden" data-ba-post>順位表に載せる</button>
           <button type="button" class="btn ghost" data-go="title">はじめへ</button>
@@ -245,6 +250,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.67"></script>
+  <script src="app.js?v=0.4.68"></script>
 </body>
 </html>

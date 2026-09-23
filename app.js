@@ -1,4 +1,4 @@
-const VERSION = "0.4.67";
+const VERSION = "0.4.68";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -152,7 +152,7 @@ function show(name) {
     paintKatsudo();
     if (loadKatsudoSes()) pullKatsudo();
   }
-  if (name === "ba") loadBa();
+  if (name === "ba") loadBoard();
   if (name === "play") {
     ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
@@ -681,6 +681,16 @@ function rememberSeen(stems) {
   return o;
 }
 
+function serverStamp(kinds) {
+  if (!loadKatsudoSes()) return;
+  const list = [...new Set((Array.isArray(kinds) ? kinds : []).filter((k) => k === "play" || k === "easy" || k === "hard" || k === "told"))];
+  if (!list.length) return;
+  katsudoFetch("/v1/stamp", {
+    method: "POST",
+    body: JSON.stringify({ kinds: list, version: VERSION }),
+  }).catch(() => {});
+}
+
 function stampPlayDay() {
   const o = loadKatsudo();
   const day = jstDay();
@@ -689,6 +699,9 @@ function stampPlayDay() {
   if (o.days.length > 400) o.days = o.days.slice(-400);
   o.v = 1;
   saveKatsudo(o);
+  const kinds = ["play"];
+  if (state.mode && state.mode.id === "easy") kinds.push("easy");
+  serverStamp(kinds);
   pushKatsudo(o);
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length };
 }
@@ -703,12 +716,7 @@ function stampHardWin() {
   o.title = "kitsui-nobiru";
   o.v = 1;
   saveKatsudo(o);
-  if (loadKatsudoSes()) {
-    katsudoFetch("/v1/stamp", {
-      method: "POST",
-      body: JSON.stringify({ day, seen: o.seen, version: VERSION }),
-    }).catch(() => {});
-  }
+  serverStamp(["play", "hard"]);
   pushKatsudo(o);
   return { freshDay, hardClears: o.hardClears };
 }
@@ -721,6 +729,7 @@ function noteTold() {
   if (!fresh) return false;
   o.told = cleanDays([...(o.told || []), day]);
   saveKatsudo(o);
+  serverStamp(["told"]);
   pushKatsudo(o);
   const n = o.told.length;
   const honor = toldHonor(n);
@@ -863,6 +872,7 @@ function paintKatsudo() {
 }
 
 let baMode = "hard";
+let baTab = "ba";
 
 function baRow(r) {
   const name = String(r.name || "走った人").replace(/[<>]/g, "");
@@ -873,6 +883,54 @@ function baRow(r) {
   const n = Number(r.n) || 0;
   const score = Math.max(0, Math.min(99999, Number(r.score) || 0));
   return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-score">${score}</span></li>`;
+}
+
+function nanRow(r) {
+  const name = String(r.name || "走った人").replace(/[<>]/g, "");
+  const av = typeof r.av === "string" && r.av.startsWith("https://cdn.discordapp.com/") ? r.av : "";
+  const img = av
+    ? `<img class="dc-ava" src="${av}" alt="" width="32" height="32" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="dc-ava ba-ph"></span>`;
+  const n = Number(r.n) || 0;
+  const mark = r.ok7 ? `<span class="ba-ok">七日</span>` : "";
+  return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-meta">語${Number(r.told) || 0} きつい${Number(r.hard) || 0} ふつう${Number(r.easy) || 0} 走${Number(r.play) || 0}</span>${mark}</li>`;
+}
+
+function paintBaChrome() {
+  $$("[data-ba-tab]").forEach((b) => b.classList.toggle("on", b.dataset.baTab === baTab));
+  const modes = $("[data-ba-modes]");
+  if (modes) modes.classList.toggle("hidden", baTab === "nan");
+  const sh = $("[data-ba-score-hint]");
+  const nh = $("[data-ba-nan-hint]");
+  if (sh) sh.classList.toggle("hidden", baTab === "nan");
+  if (nh) nh.classList.toggle("hidden", baTab !== "nan");
+}
+
+function loadBoard() {
+  paintBaChrome();
+  if (baTab === "nan") return loadNan();
+  return loadBa();
+}
+
+async function loadNan() {
+  const list = $("[data-ba-list]");
+  const empty = $("[data-ba-empty]");
+  try {
+    const res = await fetch(`${KATSUDO_API}/v1/nan`, { headers: { Accept: "application/json" } });
+    const data = await res.json();
+    const rows = data && Array.isArray(data.rows) ? data.rows : [];
+    if (list) list.innerHTML = rows.map(nanRow).join("");
+    if (empty) {
+      empty.textContent = "まだ誰も走っていない";
+      empty.classList.toggle("hidden", rows.length > 0);
+    }
+  } catch {
+    if (list) list.innerHTML = "";
+    if (empty) {
+      empty.textContent = "順位表を読めませんでした";
+      empty.classList.remove("hidden");
+    }
+  }
 }
 
 async function loadBa() {
@@ -1079,7 +1137,7 @@ function cardPack() {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
   const blob = new Blob([bytes], { type: "image/png" });
-  const file = new File([bytes], "doyaru.png", { type: "image/png" });
+  const file = new File([bytes], "share.png", { type: "image/png" });
   return {
     text,
     dataUrl,
@@ -1134,7 +1192,7 @@ function raiseCopy() {
 function raiseSave() {
   const pack = cardPack();
   if (!pack) return;
-  clickA(pack.dataUrl, "doyaru.png");
+  clickA(pack.dataUrl, "share.png");
   raiseMsg("保存した");
 }
 
@@ -2189,7 +2247,7 @@ function bootArena() {
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど";
       const raiseBtn = $("[data-raise]");
-      if (raiseBtn) raiseBtn.textContent = win ? "𝕏でドヤる" : "𝕏でシェアする";
+      if (raiseBtn) raiseBtn.textContent = rec ? "𝕏でドヤる" : "𝕏でシェアする";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
@@ -2675,7 +2733,14 @@ function bindUi() {
     const baChip = hit(ev, "[data-ba-mode]");
     if (baChip) {
       baMode = baChip.dataset.baMode === "easy" ? "easy" : "hard";
-      loadBa();
+      baTab = "ba";
+      loadBoard();
+      return;
+    }
+    const baTabBtn = hit(ev, "[data-ba-tab]");
+    if (baTabBtn) {
+      baTab = baTabBtn.dataset.baTab === "nan" ? "nan" : "ba";
+      loadBoard();
       return;
     }
     if (hit(ev, "[data-ba-post]")) {

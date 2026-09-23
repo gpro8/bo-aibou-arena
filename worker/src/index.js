@@ -93,6 +93,8 @@ function cleanRecord(raw) {
   return {
     v: 1,
     days: cleanDays(o.days),
+    easy: cleanDays(o.easy),
+    hard: cleanDays(o.hard),
     seen: cleanSeen(o.seen),
     told: cleanDays(o.told),
     hardClears,
@@ -106,6 +108,8 @@ function publicRecord(rec) {
     ok: true,
     linked: true,
     days: r.days,
+    easy: r.easy,
+    hard: r.hard,
     seen: r.seen,
     told: r.told,
     hardClears: r.hardClears,
@@ -294,11 +298,7 @@ async function handleSync(env, request) {
   }
   const incoming = cleanRecord(body);
   const rec = await loadUser(env, ses.uid);
-  rec.days = cleanDays([...rec.days, ...incoming.days]);
   rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
-  rec.told = cleanDays([...(rec.told || []), ...(incoming.told || [])]);
-  rec.hardClears = Math.max(rec.hardClears, Math.min(incoming.hardClears, rec.hardClears + 50));
-  if (incoming.title === "kitsui-nobiru" || rec.hardClears > 0) rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
@@ -307,7 +307,7 @@ async function handleStamp(env, request) {
   const ses = await sessionUid(env, request);
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   const today = jstDay();
-  if (!(await rate(env, `rl:stamp:${ses.uid}:${today}`, 12, 90000))) {
+  if (!(await rate(env, `rl:stamp:${ses.uid}:${today}`, 16, 90000))) {
     return json({ ok: false, error: "rate" }, 429, env, request);
   }
   let body = {};
@@ -316,16 +316,26 @@ async function handleStamp(env, request) {
   } catch {
     body = {};
   }
-  let day = String(body.day || today);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) day = today;
-  if (day > today) day = today;
+  const allow = new Set(["play", "easy", "hard", "told"]);
+  const raw = Array.isArray(body.kinds) ? body.kinds : body.kind ? [body.kind] : [];
+  const kinds = [...new Set(raw.map((k) => String(k)).filter((k) => allow.has(k)))].slice(0, 4);
+  if (!kinds.length) return json({ ok: false, error: "kind" }, 400, env, request);
   const rec = await loadUser(env, ses.uid);
-  if (!rec.days.includes(day)) rec.days.push(day);
-  rec.days = cleanDays(rec.days);
   rec.seen = cleanSeen([...(rec.seen || []), ...(cleanRecord(body).seen || [])]);
-  rec.hardClears = Math.min(99999, rec.hardClears + 1);
-  rec.title = "kitsui-nobiru";
+  if (kinds.includes("play") && !rec.days.includes(today)) rec.days.push(today);
+  if (kinds.includes("easy") && !rec.easy.includes(today)) rec.easy.push(today);
+  if (kinds.includes("hard") && !rec.hard.includes(today)) {
+    rec.hard.push(today);
+    rec.hardClears = Math.min(99999, rec.hardClears + 1);
+    rec.title = "kitsui-nobiru";
+  }
+  if (kinds.includes("told") && !rec.told.includes(today)) rec.told.push(today);
+  rec.days = cleanDays(rec.days);
+  rec.easy = cleanDays(rec.easy);
+  rec.hard = cleanDays(rec.hard);
+  rec.told = cleanDays(rec.told);
   await saveUser(env, ses.uid, rec);
+  await rememberNan(env, ses.uid);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
@@ -334,6 +344,83 @@ async function handleUnlink(env, request) {
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   if (env.KATSUDO) await env.KATSUDO.delete(`ses:${ses.tok}`);
   return json({ ok: true, linked: false }, 200, env, request);
+}
+
+async function rememberNan(env, uid) {
+  if (!uid) return;
+  const raw = await kvJson(env, "nan:idx");
+  const idx = Array.isArray(raw) ? raw.filter((id) => typeof id === "string" && /^\d{5,30}$/.test(id)) : [];
+  if (idx.includes(uid)) return;
+  idx.push(uid);
+  await kvPut(env, "nan:idx", idx.slice(-200));
+}
+
+function lastJstDays(n) {
+  const days = [];
+  const seen = new Set();
+  let t = Date.now();
+  while (days.length < n && t > Date.now() - 20 * 86400000) {
+    const d = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(t));
+    if (!seen.has(d)) {
+      seen.add(d);
+      days.push(d);
+    }
+    t -= 3600000;
+  }
+  return days.sort();
+}
+
+function inWin(list, win) {
+  return (Array.isArray(list) ? list : []).filter((d) => win.has(d)).length;
+}
+
+async function handleNanGet(env, request) {
+  const win = lastJstDays(7);
+  const winSet = new Set(win);
+  const idx = Array.isArray(await kvJson(env, "nan:idx")) ? await kvJson(env, "nan:idx") : [];
+  const uids = [...new Set((idx || []).filter((id) => typeof id === "string" && /^\d{5,30}$/.test(id)))].slice(-200);
+  const rows = [];
+  for (const uid of uids) {
+    const rec = await loadUser(env, uid);
+    const prof = await loadProfile(env, uid);
+    const play = inWin(rec.days, winSet);
+    const hard = inWin(rec.hard, winSet);
+    const easy = inWin(rec.easy, winSet);
+    const told = inWin(rec.told, winSet);
+    if (!play && !hard && !easy && !told) continue;
+    rows.push({
+      name: prof.name || "走った人",
+      av: prof.av,
+      play,
+      hard,
+      easy,
+      told,
+      ok7: play >= 7,
+    });
+  }
+  rows.sort((a, b) => {
+    if (a.ok7 !== b.ok7) return a.ok7 ? -1 : 1;
+    if (b.told !== a.told) return b.told - a.told;
+    if (b.hard !== a.hard) return b.hard - a.hard;
+    if (b.easy !== a.easy) return b.easy - a.easy;
+    return b.play - a.play;
+  });
+  const out = rows.slice(0, 50).map((r, i) => ({
+    n: i + 1,
+    name: cleanName(r.name) || "走った人",
+    av: publicAv(r.av),
+    play: r.play,
+    hard: r.hard,
+    easy: r.easy,
+    told: r.told,
+    ok7: r.ok7,
+  }));
+  return json({ ok: true, window: win, rows: out }, 200, env, request);
 }
 
 async function handleBaGet(env, request) {
@@ -430,6 +517,9 @@ export default {
     }
     if (url.pathname === "/v1/ba" && request.method === "GET") {
       return handleBaGet(env, request);
+    }
+    if (url.pathname === "/v1/nan" && request.method === "GET") {
+      return handleNanGet(env, request);
     }
     if (url.pathname === "/v1/ba" && request.method === "POST") {
       const origin = request.headers.get("Origin") || "";
