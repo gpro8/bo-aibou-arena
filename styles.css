@@ -8,7 +8,7 @@ html[data-theme="yin"] {
   --line: #3a342c;
   --yang: #f7ecd4;
   --yin: #12100e;
-  --wagara: rgba(109, 51, 133, 0.16);
+  --wagara: rgba(109, 51, 133, 0.10);
   --safe-t: env(safe-area-inset-top);
   --safe-b: env(safe-area-inset-bottom);
   --safe-l: env(safe-area-inset-left);
@@ -23,7 +23,7 @@ html[data-theme="yang"] {
   --line: #d4c4a8;
   --yang: #f7ecd4;
   --yin: #12100e;
-  --wagara: rgba(46, 93, 75, 0.18);
+  --wagara: rgba(46, 93, 75, 0.12);
 }
 * { box-sizing: border-box; }
 html, body {
@@ -259,6 +259,12 @@ body.playing #app {
   padding: calc(20px + var(--safe-t)) 16px calc(40px + var(--safe-b));
 }
 .screen { display: flex; flex-direction: column; gap: 14px; }
+.screen:not([data-screen="play"]) {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px 16px 22px;
+}
 .hidden { display: none !important; }
 .kicker { letter-spacing: 0.2em; color: var(--gold); margin: 0; font-size: 12px; }
 .ver {
@@ -284,11 +290,13 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   height: 22px;
   border-radius: 50%;
   border: 2px solid var(--line);
-  background: transparent;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--panel);
 }
 .streak i.on {
   background: var(--gold);
   border-color: var(--gold);
+  box-shadow: none;
 }
 .streak i.today {
   box-shadow: 0 0 0 3px rgba(248, 181, 0, 0.38);

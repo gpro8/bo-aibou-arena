@@ -8,7 +8,7 @@ html[data-theme="yin"] {
   --gold: #f8b500;
   --gold-dim: #c49a2a;
   --chip: #2a241c;
-  --wagara: rgba(109, 51, 133, 0.16);
+  --wagara: rgba(109, 51, 133, 0.10);
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
 }
 html[data-theme="yang"] {
@@ -20,7 +20,7 @@ html[data-theme="yang"] {
   --gold: #f8b500;
   --gold-dim: #c49a14;
   --chip: #efe3c8;
-  --wagara: rgba(46, 93, 75, 0.18);
+  --wagara: rgba(46, 93, 75, 0.12);
   --shadow: 0 18px 50px rgba(58, 46, 34, 0.12);
 }
 * { box-sizing: border-box; }
@@ -74,7 +74,14 @@ html[data-theme="yang"] body {
 .theme-btn[data-mode="yang"] .ico-moon { display: none; }
 .theme-btn[data-mode="yin"] .ico-sun { display: none; }
 a { color: var(--gold); }
-.wrap { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.6rem 0 4rem; }
+.wrap {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.6rem 1.2rem 4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+}
 .nav { margin: 0 0 0.8rem; font-size: 0.85rem; }
 .nav a { text-decoration: none; }
 .top {
@@ -140,9 +147,15 @@ h1 {
   height: 100%;
   object-fit: contain;
 }
+.card.secret .card-art,
+.modal-art.secret {
+  background:
+    radial-gradient(ellipse at 50% 72%, #efe3c8 0%, #c9b48a 58%, #8a7a62 100%);
+}
 .card.secret .card-art img,
 .modal-art.secret img {
   filter: brightness(0);
+  opacity: 0.9;
 }
 .card.secret h2 { color: var(--muted); }
 .card-meta { padding: 0.7rem 0.25rem 0.2rem; }
