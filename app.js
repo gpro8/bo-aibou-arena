@@ -1,4 +1,4 @@
-const VERSION = "0.4.53";
+const VERSION = "0.4.54";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -32,6 +32,8 @@ const STAGES = [
   { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
 ];
 const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
+const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
+const KATSUDO_SES = "bo-aibou-katsudo-ses";
 const WELL_PAD = 30;
 function buzz(pat) {
   try {
@@ -99,7 +101,10 @@ function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
   document.body.classList.toggle("playing", name === "play");
   if (name === "title" || name === "setup") paintRec();
-  if (name === "katsudo") paintKatsudo();
+  if (name === "katsudo") {
+    paintKatsudo();
+    if (loadKatsudoSes()) pullKatsudo();
+  }
   if (name === "play") {
     ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
@@ -349,6 +354,103 @@ function saveKatsudo(o) {
   }
 }
 
+function loadKatsudoSes() {
+  try {
+    return localStorage.getItem(KATSUDO_SES) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveKatsudoSes(tok) {
+  try {
+    if (tok) localStorage.setItem(KATSUDO_SES, tok);
+    else localStorage.removeItem(KATSUDO_SES);
+  } catch {
+    /* guest */
+  }
+}
+
+async function katsudoFetch(path, opts) {
+  const ses = loadKatsudoSes();
+  const headers = { Accept: "application/json" };
+  if (ses) headers.Authorization = `Bearer ${ses}`;
+  if (opts && opts.body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${KATSUDO_API}${path}`, {
+    method: (opts && opts.method) || "GET",
+    headers,
+    body: opts && opts.body,
+  });
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+  return { ok: res.ok && data.ok !== false, status: res.status, data };
+}
+
+function mergeKatsudoRemote(remote) {
+  if (!remote || typeof remote !== "object") return loadKatsudo();
+  const local = loadKatsudo();
+  const days = [...new Set([...local.days, ...(Array.isArray(remote.days) ? remote.days : [])])]
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .sort();
+  const hardClears = Math.max(local.hardClears, Math.max(0, Number(remote.hardClears) || 0));
+  const title = local.title === "kitsui-nobiru" || remote.title === "kitsui-nobiru" ? "kitsui-nobiru" : "";
+  const next = { v: 1, days: days.slice(-400), hardClears, title };
+  saveKatsudo(next);
+  return next;
+}
+
+async function pullKatsudo() {
+  if (!loadKatsudoSes()) {
+    paintKatsudo();
+    return;
+  }
+  const got = await katsudoFetch("/v1/me");
+  if (got.status === 401) {
+    saveKatsudoSes("");
+    paintKatsudo();
+    return;
+  }
+  if (got.ok) {
+    mergeKatsudoRemote(got.data);
+    const local = loadKatsudo();
+    await katsudoFetch("/v1/sync", {
+      method: "POST",
+      body: JSON.stringify({
+        days: local.days,
+        hardClears: local.hardClears,
+        title: local.title,
+        version: VERSION,
+      }),
+    });
+  }
+  paintKatsudo();
+}
+
+function consumeKatsudoReturn() {
+  const u = new URL(location.href);
+  const flag = u.searchParams.get("katsudo");
+  let tok = "";
+  const hash = location.hash || "";
+  if (hash.startsWith("#ks=")) tok = hash.slice(4).replace(/[^a-f0-9]/gi, "");
+  if (tok) saveKatsudoSes(tok.toLowerCase());
+  if (flag || tok) {
+    u.searchParams.delete("katsudo");
+    const q = u.searchParams.toString();
+    history.replaceState(null, "", u.pathname + (q ? `?${q}` : "") );
+    if (flag === "ok" || tok) {
+      show("katsudo");
+      pullKatsudo();
+    } else {
+      show("katsudo");
+      paintKatsudo();
+    }
+  }
+}
+
 function stampHardWin() {
   const o = loadKatsudo();
   const day = jstDay();
@@ -359,6 +461,12 @@ function stampHardWin() {
   o.title = "kitsui-nobiru";
   o.v = 1;
   saveKatsudo(o);
+  if (loadKatsudoSes()) {
+    katsudoFetch("/v1/stamp", {
+      method: "POST",
+      body: JSON.stringify({ day, version: VERSION }),
+    }).catch(() => {});
+  }
   return { freshDay, hardClears: o.hardClears };
 }
 
@@ -375,6 +483,17 @@ function paintKatsudo() {
   if (title) title.textContent = has ? "きついを生き延びた" : "";
   if (days) days.textContent = has ? `走った日 ${o.days.length}日` : "";
   if (clears) clears.textContent = has ? `きついクリア ${o.hardClears}回` : "";
+  const linked = Boolean(loadKatsudoSes());
+  const link = $("[data-katsudo-link]");
+  if (link) {
+    link.textContent = linked
+      ? "つながった。Discordの番号で残す（この端末と同期）"
+      : "この端末に残る。つなぐとDiscordの番号で残す";
+  }
+  const connect = $("[data-katsudo-connect]");
+  const unlink = $("[data-katsudo-unlink]");
+  if (connect) connect.classList.toggle("hidden", linked);
+  if (unlink) unlink.classList.toggle("hidden", !linked);
 }
 
 function loadStickSide() {
@@ -2014,6 +2133,7 @@ async function main() {
   const ver = $("[data-ver]");
   if (ver) ver.textContent = `v${VERSION}`;
   loadStickSide();
+  consumeKatsudoReturn();
   renderSetup();
 
   bindStick();
@@ -2049,6 +2169,17 @@ async function main() {
       killGame();
       if (go.dataset.go === "setup") renderSetup();
       show(go.dataset.go);
+      return;
+    }
+    if (ev.target.closest("[data-katsudo-connect]")) {
+      location.href = `${KATSUDO_API}/v1/oauth/start`;
+      return;
+    }
+    if (ev.target.closest("[data-katsudo-unlink]")) {
+      katsudoFetch("/v1/unlink", { method: "POST", body: "{}" }).finally(() => {
+        saveKatsudoSes("");
+        paintKatsudo();
+      });
       return;
     }
     if (ev.target.closest("[data-how]")) {

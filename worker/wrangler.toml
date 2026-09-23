@@ -1,0 +1,17 @@
+name = "bo-aibou-katsudo"
+main = "src/index.js"
+compatibility_date = "2026-03-01"
+workers_dev = true
+account_id = "14479f8c9f6580f40fc8bb057556144c"
+
+# Secrets: DISCORD_CLIENT_SECRET
+# Public client id is [vars] (not a secret).
+
+[vars]
+ALLOWED_ORIGINS = "https://gpro8.github.io"
+PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/"
+DISCORD_CLIENT_ID = ""
+
+[[kv_namespaces]]
+binding = "KATSUDO"
+id = "bf05297ad7494bc09c68d61765aa5e52"
