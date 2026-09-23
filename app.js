@@ -1,4 +1,4 @@
-const VERSION = "0.4.57";
+const VERSION = "0.4.58";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -342,6 +342,18 @@ function cleanSeen(list) {
   return out;
 }
 
+function cleanDays(list) {
+  const out = [];
+  const have = new Set();
+  for (const d of Array.isArray(list) ? list : []) {
+    if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d) || have.has(d)) continue;
+    have.add(d);
+    out.push(d);
+  }
+  out.sort();
+  return out.slice(-400);
+}
+
 function jobStem(job) {
   return (FOE_NAMES[job] && FOE_NAMES[job].stem) || "";
 }
@@ -354,33 +366,84 @@ function seenNames(stems) {
   return cleanSeen(stems).map((s) => byStem[s] || s);
 }
 
-function loadKatsudo() {
+function emptyKatsudo() {
+  return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
+}
+
+function copyKatsudo(o) {
+  return {
+    v: 1,
+    hardClears: Math.max(0, Math.min(99999, Number(o.hardClears) || 0)),
+    days: cleanDays(o.days),
+    seen: cleanSeen(o.seen),
+    told: cleanDays(o.told),
+    title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
+  };
+}
+
+function readKatsudoDisk() {
   try {
     const o = JSON.parse(localStorage.getItem("bo-aibou-katsudo") || "null");
-    if (!o || typeof o !== "object") return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
-    const days = Array.isArray(o.days) ? o.days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
-    const seen = cleanSeen(o.seen);
-    const told = cleanDays(o.told);
-    const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
-    return {
-      v: 1,
-      hardClears,
-      days,
-      seen,
-      told,
-      title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
-    };
+    if (!o || typeof o !== "object") return emptyKatsudo();
+    return copyKatsudo(o);
   } catch {
-    return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
+    return emptyKatsudo();
   }
 }
 
-function saveKatsudo(o) {
-  try {
-    localStorage.setItem("bo-aibou-katsudo", JSON.stringify(o));
-  } catch {
-    /* guest device */
+let katsudoMem = null;
+
+function loadKatsudo() {
+  const disk = readKatsudoDisk();
+  if (!katsudoMem) {
+    katsudoMem = copyKatsudo(disk);
+    return copyKatsudo(katsudoMem);
   }
+  const next = {
+    v: 1,
+    hardClears: Math.max(katsudoMem.hardClears, disk.hardClears),
+    days: cleanDays([...(katsudoMem.days || []), ...(disk.days || [])]),
+    seen: cleanSeen([...(katsudoMem.seen || []), ...(disk.seen || [])]),
+    told: cleanDays([...(katsudoMem.told || []), ...(disk.told || [])]),
+    title:
+      katsudoMem.title === "kitsui-nobiru" || disk.title === "kitsui-nobiru"
+        ? "kitsui-nobiru"
+        : "",
+  };
+  katsudoMem = next;
+  return copyKatsudo(next);
+}
+
+function saveKatsudo(o) {
+  const next = copyKatsudo(o);
+  if (katsudoMem) {
+    next.hardClears = Math.max(next.hardClears, katsudoMem.hardClears);
+    next.days = cleanDays([...(katsudoMem.days || []), ...(next.days || [])]);
+    next.seen = cleanSeen([...(katsudoMem.seen || []), ...(next.seen || [])]);
+    next.told = cleanDays([...(katsudoMem.told || []), ...(next.told || [])]);
+    if (katsudoMem.title === "kitsui-nobiru") next.title = "kitsui-nobiru";
+  }
+  katsudoMem = copyKatsudo(next);
+  try {
+    localStorage.setItem("bo-aibou-katsudo", JSON.stringify(katsudoMem));
+  } catch {
+    /* guest device — mem still holds */
+  }
+}
+
+function pushKatsudo(o) {
+  if (!loadKatsudoSes()) return;
+  katsudoFetch("/v1/sync", {
+    method: "POST",
+    body: JSON.stringify({
+      days: o.days,
+      hardClears: o.hardClears,
+      seen: o.seen,
+      told: o.told,
+      title: o.title,
+      version: VERSION,
+    }),
+  }).catch(() => {});
 }
 
 function loadKatsudoSes() {
@@ -500,19 +563,7 @@ function rememberSeen(stems) {
   const o = loadKatsudo();
   o.seen = cleanSeen([...(o.seen || []), ...add]);
   saveKatsudo(o);
-  if (loadKatsudoSes()) {
-    katsudoFetch("/v1/sync", {
-      method: "POST",
-      body: JSON.stringify({
-        days: o.days,
-        hardClears: o.hardClears,
-        seen: o.seen,
-        told: o.told,
-        title: o.title,
-        version: VERSION,
-      }),
-    }).catch(() => {});
-  }
+  pushKatsudo(o);
   return o;
 }
 
@@ -532,6 +583,7 @@ function stampHardWin() {
       body: JSON.stringify({ day, seen: o.seen, version: VERSION }),
     }).catch(() => {});
   }
+  pushKatsudo(o);
   return { freshDay, hardClears: o.hardClears };
 }
 
@@ -544,19 +596,7 @@ function noteTold() {
   if (!fresh) return false;
   o.told = cleanDays([...(o.told || []), day]);
   saveKatsudo(o);
-  if (loadKatsudoSes()) {
-    katsudoFetch("/v1/sync", {
-      method: "POST",
-      body: JSON.stringify({
-        days: o.days,
-        hardClears: o.hardClears,
-        seen: o.seen,
-        told: o.told,
-        title: o.title,
-        version: VERSION,
-      }),
-    }).catch(() => {});
-  }
+  pushKatsudo(o);
   showToast("語った");
   paintKatsudo();
   return true;
@@ -591,9 +631,21 @@ function paintKatsudo() {
   const title = $("[data-katsudo-title]");
   const days = $("[data-katsudo-days]");
   const clears = $("[data-katsudo-clears]");
-  if (title) title.textContent = has ? "きついを生き延びた" : "まだ";
-  if (days) days.textContent = `走った日 ${o.days.length}日`;
-  if (clears) clears.textContent = `きついクリア ${o.hardClears}回`;
+  if (title) {
+    title.textContent = has ? "きついを生き延びた" : "まだ";
+    title.classList.toggle("thanks", has);
+    title.classList.toggle("hint", !has);
+  }
+  if (days) {
+    days.textContent = `走った日 ${o.days.length}日`;
+    days.classList.toggle("thanks", o.days.length > 0);
+    days.classList.toggle("hint", o.days.length === 0);
+  }
+  if (clears) {
+    clears.textContent = `きついクリア ${o.hardClears}回`;
+    clears.classList.toggle("thanks", o.hardClears > 0);
+    clears.classList.toggle("hint", o.hardClears === 0);
+  }
   const seenEl = $("[data-katsudo-seen]");
   if (seenEl) {
     const names = seenNames(o.seen);
@@ -1862,6 +1914,9 @@ function bootArena() {
           /* guest device */
         }
       }
+      const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
+      let stamped = null;
+      if (win && hard) stamped = stampHardWin();
       state.last = {
         win,
         id: mate.id,
@@ -1871,7 +1926,7 @@ function bootArena() {
         kills: this.kills,
         combo: this.maxCombo,
         rec,
-        hard: mode.id === "hard",
+        hard,
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
@@ -1882,17 +1937,17 @@ function bootArena() {
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
       if (kEl) {
-        if (win && mode.id === "hard") {
-          const stamped = stampHardWin();
-          kEl.textContent = stamped.freshDay
-            ? "活動記録に日の印 · きついを生き延びた"
-            : "活動記録 · きついを生き延びた";
+        if (stamped) {
+          const o = loadKatsudo();
+          kEl.textContent = `日の印 走った日 ${o.days.length}日 · きついクリア ${o.hardClears}回`;
           kEl.classList.remove("hidden");
+          if (stamped.freshDay) showToast("日の印");
         } else {
           kEl.textContent = "";
           kEl.classList.add("hidden");
         }
       }
+      paintKatsudo();
       paintRec();
       paintFlagCard(state.last);
       const pause = $("#pause-ov");
