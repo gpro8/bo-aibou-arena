@@ -15,15 +15,19 @@ function padNo(n) {
 }
 
 function cardHtml(e, seen) {
-  const job = e.job ? `<span class="chip">${esc(e.job)}</span>` : "";
-  const met = seen.has(e.id) ? `<span class="chip">見た</span>` : "";
-  return `<button class="card" type="button" data-id="${esc(e.id)}" aria-label="${esc(e.name)}">
+  const met = seen.has(e.id);
+  const job = met && e.job ? `<span class="chip">${esc(e.job)}</span>` : "";
+  const saw = met ? `<span class="chip">見た</span>` : `<span class="chip">未見</span>`;
+  const name = met ? e.name : "？";
+  const en = met ? e.nameEn || "" : "きついの場で会うとわかる";
+  const cls = met ? "card" : "card secret";
+  return `<button class="${cls}" type="button" data-id="${esc(e.id)}" aria-label="${esc(met ? e.name : "未見")}">
     <div class="card-art"><img src="${esc(e.image)}" alt="" width="640" height="640" loading="lazy" decoding="async"></div>
     <div class="card-meta">
       <div class="no">${padNo(e.no)}</div>
-      <h2>${esc(e.name)}</h2>
-      <div class="en">${esc(e.nameEn || "")}</div>
-      <div class="chips">${job}${met}</div>
+      <h2>${esc(name)}</h2>
+      <div class="en">${esc(en)}</div>
+      <div class="chips">${job}${saw}</div>
     </div>
   </button>`;
 }
@@ -34,22 +38,28 @@ function sec(title, inner) {
 }
 
 function modalHtml(e, seen) {
-  const bits = (e.fields || [])
-    .filter((row) => Array.isArray(row) && row[0] && row[1])
-    .map(([k, v]) => sec(k, `<p>${esc(v)}</p>`))
-    .join("");
-  const met = seen.has(e.id) ? sec("活動記録", "<p>きついの場で見た</p>") : "";
+  const met = seen.has(e.id);
+  const bits = met
+    ? (e.fields || [])
+        .filter((row) => Array.isArray(row) && row[0] && row[1])
+        .map(([k, v]) => sec(k, `<p>${esc(v)}</p>`))
+        .join("")
+    : sec("未見", "<p>きついの場で会うと姿と名がわかる</p>");
+  const metSec = met ? sec("活動記録", "<p>きついの場で見た</p>") : "";
+  const name = met ? e.name : "？";
+  const en = met ? e.nameEn || "" : "";
+  const artCls = met ? "modal-art" : "modal-art secret";
   return `
     <div class="modal-head">
       <div>
         <div class="no">${padNo(e.no)}</div>
-        <h2>${esc(e.name)}</h2>
-        <div class="en">${esc(e.nameEn || "")}</div>
+        <h2>${esc(name)}</h2>
+        <div class="en">${esc(en)}</div>
       </div>
       <button class="close" type="button" data-close>閉じる</button>
     </div>
-    <div class="modal-art"><img src="${esc(e.image)}" alt="${esc(e.name)}" width="720" height="720" decoding="async"></div>
-    <div class="sections">${bits}${met}</div>`;
+    <div class="${artCls}"><img src="${esc(e.image)}" alt="${esc(name)}" width="720" height="720" decoding="async"></div>
+    <div class="sections">${bits}${metSec}</div>`;
 }
 
 async function main() {

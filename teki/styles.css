@@ -86,6 +86,16 @@ h1 {
   height: 100%;
   object-fit: contain;
 }
+.card.secret .card-art,
+.modal-art.secret {
+  background: #16130f;
+}
+.card.secret .card-art img,
+.modal-art.secret img {
+  filter: grayscale(1) brightness(0.22) contrast(1.45);
+  opacity: 0.88;
+}
+.card.secret h2 { color: var(--muted); }
 .card-meta { padding: 0.7rem 0.25rem 0.2rem; }
 .no {
   font-size: 0.72rem;

@@ -1,4 +1,4 @@
-const VERSION = "0.4.56";
+const VERSION = "0.4.57";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -485,6 +485,15 @@ function consumeKatsudoReturn() {
   }
 }
 
+function markSeenLocal(stem) {
+  const s = String(stem || "");
+  if (!SEEN_STEMS.includes(s)) return;
+  const o = loadKatsudo();
+  if ((o.seen || []).includes(s)) return;
+  o.seen = cleanSeen([...(o.seen || []), s]);
+  saveKatsudo(o);
+}
+
 function rememberSeen(stems) {
   const add = cleanSeen(stems);
   if (!add.length) return loadKatsudo();
@@ -576,25 +585,26 @@ function paintKatsudo() {
   const o = loadKatsudo();
   const has = o.hardClears > 0;
   const empty = $("[data-katsudo-empty]");
+  if (empty) empty.classList.add("hidden");
   const filled = $("[data-katsudo-filled]");
-  if (empty) empty.classList.toggle("hidden", has);
-  if (filled) filled.classList.toggle("hidden", !has);
+  if (filled) filled.classList.remove("hidden");
   const title = $("[data-katsudo-title]");
   const days = $("[data-katsudo-days]");
   const clears = $("[data-katsudo-clears]");
-  if (title) title.textContent = has ? "きついを生き延びた" : "";
-  if (days) days.textContent = has ? `走った日 ${o.days.length}日` : "";
-  if (clears) clears.textContent = has ? `きついクリア ${o.hardClears}回` : "";
+  if (title) title.textContent = has ? "きついを生き延びた" : "まだ";
+  if (days) days.textContent = `走った日 ${o.days.length}日`;
+  if (clears) clears.textContent = `きついクリア ${o.hardClears}回`;
   const seenEl = $("[data-katsudo-seen]");
   if (seenEl) {
     const names = seenNames(o.seen);
-    seenEl.textContent = names.length ? `見た敵の種類 ${names.join(" · ")}` : "きついの場で会った敵の種類が残る";
+    seenEl.textContent = names.length
+      ? `見た敵の種類 ${names.join(" · ")}`
+      : "見た敵の種類 まだ";
   }
   const toldEl = $("[data-katsudo-told]");
   if (toldEl) {
-    const n = (o.told || []).length;
-    toldEl.textContent = n ? `語った ${n}日` : "";
-    toldEl.classList.toggle("hidden", !n);
+    toldEl.textContent = `語った ${(o.told || []).length}日`;
+    toldEl.classList.remove("hidden");
   }
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
@@ -1327,7 +1337,10 @@ function bootArena() {
       if (!this.seenJobs) this.seenJobs = new Set();
       if (mode.id === "hard") {
         const stem = jobStem(job);
-        if (stem) this.seenJobs.add(stem);
+        if (stem) {
+          this.seenJobs.add(stem);
+          markSeenLocal(stem);
+        }
       }
       foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
@@ -2247,6 +2260,8 @@ function resumePlay() {
 
 function killGame() {
   unlockOrient();
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (sc && sc.seenJobs && sc.seenJobs.size) rememberSeen([...sc.seenJobs]);
   if (state.game) {
     state.game.destroy(true);
     state.game = null;
