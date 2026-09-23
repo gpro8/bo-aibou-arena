@@ -1,4 +1,4 @@
-const VERSION = "0.4.66";
+const VERSION = "0.4.67";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -825,7 +825,10 @@ function paintKatsudo() {
   }
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
-  if (hello) hello.classList.toggle("hidden", !linked);
+  if (hello) {
+    hello.classList.remove("hidden");
+    hello.classList.toggle("guest", !linked);
+  }
   const prof = loadKatsudoProf();
   const av = $("[data-dc-ava]");
   const nm = $("[data-dc-name]");
@@ -839,18 +842,24 @@ function paintKatsudo() {
       av.classList.add("hidden");
     }
   }
-  if (nm) nm.textContent = linked && prof.name ? prof.name : "";
-  if (mark) mark.classList.toggle("hidden", Boolean(linked && prof.av));
+  if (nm) nm.textContent = linked && prof.name ? prof.name : "Guest player";
+  if (mark) {
+    mark.classList.remove("hidden");
+    mark.classList.toggle("dc-mute", !linked);
+    mark.setAttribute("aria-label", linked ? "接続を解除" : "つなぐ");
+  }
+  const join = $("[data-katsudo-join]");
+  if (join) join.classList.toggle("hidden", linked);
+  const ask = $("[data-dc-ask]");
+  if (ask && !linked) ask.classList.add("hidden");
   const link = $("[data-katsudo-link]");
   if (link) {
     link.textContent = linked
       ? "Discordの名前で残す（番号は出ない）。順位表にも載せられる"
-      : "この端末に残る。つなぐとDiscordの名前で残す";
+      : "この端末に残る";
   }
   const connect = $("[data-katsudo-connect]");
-  const unlink = $("[data-katsudo-unlink]");
   if (connect) connect.classList.toggle("hidden", linked);
-  if (unlink) unlink.classList.toggle("hidden", !linked);
 }
 
 let baMode = "hard";
@@ -2639,7 +2648,24 @@ function bindUi() {
       location.href = `${KATSUDO_API}/v1/oauth/start`;
       return;
     }
-    if (hit(ev, "[data-katsudo-unlink]")) {
+    const dcMark = hit(ev, "[data-dc-mark]");
+    if (dcMark) {
+      if (loadKatsudoSes()) {
+        const ask = $("[data-dc-ask]");
+        if (ask) ask.classList.remove("hidden");
+      } else {
+        location.href = `${KATSUDO_API}/v1/oauth/start`;
+      }
+      return;
+    }
+    if (hit(ev, "[data-dc-un-no]")) {
+      const ask = $("[data-dc-ask]");
+      if (ask) ask.classList.add("hidden");
+      return;
+    }
+    if (hit(ev, "[data-dc-un-yes]")) {
+      const ask = $("[data-dc-ask]");
+      if (ask) ask.classList.add("hidden");
       katsudoFetch("/v1/unlink", { method: "POST", body: "{}" }).finally(() => {
         saveKatsudoSes("");
         paintKatsudo();
