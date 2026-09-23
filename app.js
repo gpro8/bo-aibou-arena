@@ -1,4 +1,4 @@
-const VERSION = "0.4.65";
+const VERSION = "0.4.66";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -844,7 +844,7 @@ function paintKatsudo() {
   const link = $("[data-katsudo-link]");
   if (link) {
     link.textContent = linked
-      ? "Discordの名前で残す（番号は出ない）。場にも載せられる"
+      ? "Discordの名前で残す（番号は出ない）。順位表にも載せられる"
       : "この端末に残る。つなぐとDiscordの名前で残す";
   }
   const connect = $("[data-katsudo-connect]");
@@ -882,7 +882,7 @@ async function loadBa() {
   } catch {
     if (list) list.innerHTML = "";
     if (empty) {
-      empty.textContent = "場を読めませんでした";
+      empty.textContent = "順位表を読めませんでした";
       empty.classList.remove("hidden");
     }
   }
@@ -892,7 +892,7 @@ async function postBa() {
   const run = state.last;
   if (!run) return;
   if (!loadKatsudoSes()) {
-    showToast("つなぐと場に載せる");
+    showToast("つなぐと順位表に載せる");
     return;
   }
   const mode = run.mode === "easy" ? "easy" : "hard";
@@ -902,7 +902,7 @@ async function postBa() {
   });
   if (got.status === 401) {
     saveKatsudoSes("");
-    showToast("つなぐと場に載せる");
+    showToast("つなぐと順位表に載せる");
     return;
   }
   if (got.status === 429) {

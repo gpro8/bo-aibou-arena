@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.65">
+  <link rel="stylesheet" href="styles.css?v=0.4.66">
 </head>
 <body>
   <div id="app">
@@ -55,7 +55,7 @@
         <button type="button" class="btn gold" data-go="setup">遊ぶ</button>
         <button type="button" class="btn ghost" data-how>遊び方</button>
         <button type="button" class="btn ghost" data-go="katsudo">活動記録</button>
-        <button type="button" class="btn ghost" data-go="ba">場</button>
+        <button type="button" class="btn ghost" data-go="ba">順位表</button>
         <a class="btn ghost" href="https://gpro8.github.io/bo-aibou-zukan/" target="_blank" rel="noopener noreferrer">相棒図鑑</a>
         <a class="btn ghost" href="./teki/">敵図鑑</a>
       </div>
@@ -79,7 +79,7 @@
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
-        <li>生き延びたら𝕏でドヤる。やられたら𝕏でシェアする。つなぐと場に載せる（名前と姿。番号は出ない。誉のみ）</li>
+        <li>生き延びたら𝕏でドヤる。やられたら𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
       </ul>
       <div class="row">
         <button type="button" class="btn gold" data-go="title">もどる</button>
@@ -123,7 +123,7 @@
     </section>
 
     <section class="screen hidden" data-screen="ba">
-      <h1>場</h1>
+      <h1>順位表</h1>
       <p class="hint">誉。投票権・Gi・金銭にはなりません</p>
       <p class="hint">つなぐと名前と姿が出る。番号は出ない</p>
       <div class="chips">
@@ -220,7 +220,7 @@
         <div class="col">
           <button type="button" class="btn gold" data-raise>𝕏でドヤる</button>
           <button type="button" class="btn gold" data-again>もういちど</button>
-          <button type="button" class="btn ghost hidden" data-ba-post>場に載せる</button>
+          <button type="button" class="btn ghost hidden" data-ba-post>順位表に載せる</button>
           <button type="button" class="btn ghost" data-go="title">はじめへ</button>
         </div>
       </div>
@@ -240,6 +240,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.65"></script>
+  <script src="app.js?v=0.4.66"></script>
 </body>
 </html>
