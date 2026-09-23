@@ -379,10 +379,47 @@ function inWin(list, win) {
   return (Array.isArray(list) ? list : []).filter((d) => win.has(d)).length;
 }
 
+function parseDay(s) {
+  const t = String(s || "");
+  return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : "";
+}
+
+function nextDay(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+function daysBetween(start, end) {
+  const out = [];
+  let cur = start;
+  for (let i = 0; i < 31 && cur <= end; i += 1) {
+    out.push(cur);
+    cur = nextDay(cur);
+  }
+  return out;
+}
+
+function campaignMeta(env) {
+  const start = parseDay(env.CAMPAIGN_START);
+  const end = parseDay(env.CAMPAIGN_END);
+  const today = jstDay();
+  if (!start || !end || end < start) {
+    return { status: "soon", start: "", end: "", window: lastJstDays(7), practice: true };
+  }
+  const window = daysBetween(start, end);
+  let status = "live";
+  if (today < start) status = "soon";
+  if (today > end) status = "ended";
+  return { status, start, end, window, practice: false };
+}
+
 async function handleNanGet(env, request) {
-  const win = lastJstDays(7);
+  const meta = campaignMeta(env);
+  const win = meta.window;
   const winSet = new Set(win);
-  const idx = Array.isArray(await kvJson(env, "nan:idx")) ? await kvJson(env, "nan:idx") : [];
+  const idxRaw = await kvJson(env, "nan:idx");
+  const idx = Array.isArray(idxRaw) ? idxRaw : [];
   const uids = [...new Set((idx || []).filter((id) => typeof id === "string" && /^\d{5,30}$/.test(id)))].slice(-200);
   const rows = [];
   for (const uid of uids) {
@@ -420,7 +457,20 @@ async function handleNanGet(env, request) {
     told: r.told,
     ok7: r.ok7,
   }));
-  return json({ ok: true, window: win, rows: out }, 200, env, request);
+  return json(
+    {
+      ok: true,
+      status: meta.status,
+      start: meta.start,
+      end: meta.end,
+      practice: Boolean(meta.practice),
+      window: win,
+      rows: out,
+    },
+    200,
+    env,
+    request
+  );
 }
 
 async function handleBaGet(env, request) {

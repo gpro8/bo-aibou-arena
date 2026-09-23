@@ -1,4 +1,4 @@
-const VERSION = "0.4.68";
+const VERSION = "0.4.69";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -904,6 +904,10 @@ function paintBaChrome() {
   const nh = $("[data-ba-nan-hint]");
   if (sh) sh.classList.toggle("hidden", baTab === "nan");
   if (nh) nh.classList.toggle("hidden", baTab !== "nan");
+  const phase = $("[data-nan-phase]");
+  const rules = $("[data-nan-rules]");
+  if (phase) phase.classList.toggle("hidden", baTab !== "nan");
+  if (rules) rules.classList.toggle("hidden", baTab !== "nan");
 }
 
 function loadBoard() {
@@ -915,9 +919,17 @@ function loadBoard() {
 async function loadNan() {
   const list = $("[data-ba-list]");
   const empty = $("[data-ba-empty]");
+  const phase = $("[data-nan-phase]");
   try {
     const res = await fetch(`${KATSUDO_API}/v1/nan`, { headers: { Accept: "application/json" } });
     const data = await res.json();
+    if (phase) {
+      const st = data && data.status;
+      if (st === "live") phase.textContent = `開催中 ${data.start}〜${data.end}（JST）`;
+      else if (st === "ended") phase.textContent = `終了 ${data.start}〜${data.end}（JST）`;
+      else if (data && data.practice) phase.textContent = "開始前。下は練習（直近7日）";
+      else phase.textContent = "開始前。ルールを読んでつなぐ";
+    }
     const rows = data && Array.isArray(data.rows) ? data.rows : [];
     if (list) list.innerHTML = rows.map(nanRow).join("");
     if (empty) {
@@ -925,6 +937,7 @@ async function loadNan() {
       empty.classList.toggle("hidden", rows.length > 0);
     }
   } catch {
+    if (phase) phase.textContent = "開始前。ルールを読んでつなぐ";
     if (list) list.innerHTML = "";
     if (empty) {
       empty.textContent = "順位表を読めませんでした";
@@ -1048,6 +1061,7 @@ function raiseText(run) {
     `${run.name} ${run.win ? "生き延びた" : "やられた"}`,
     `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
     "入場・参加無料",
+    "活動記録でつなぐ",
     PLAY_URL,
     "",
     "#相棒あそび #BushiDAO",

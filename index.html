@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.68">
+  <link rel="stylesheet" href="styles.css?v=0.4.69">
 </head>
 <body>
   <div id="app">
@@ -80,6 +80,7 @@
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
         <li>新記録のときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
+        <li>七日の走：活動記録でつなぐ。期間中7日走ると参加。順は語った→きつい→ふつう。記録点は使わない。入場・参加無料。詳しくは順位表</li>
       </ul>
       <div class="row">
         <button type="button" class="btn gold" data-go="title">もどる</button>
@@ -135,7 +136,16 @@
         <button type="button" class="chip" data-ba-tab="nan">七日の走</button>
       </div>
       <p class="hint" data-ba-score-hint>つなぐと名前と姿が出る。番号は出ない</p>
-      <p class="hint hidden" data-ba-nan-hint>直近7日（JST）。走った7日で参加。順は語った→きつい→ふつう。記録点は使わない。番号は出ない</p>
+      <p class="hint hidden" data-ba-nan-hint>記録点は使わない。番号は出ない</p>
+      <p class="hint hidden" data-nan-phase>開始前。ルールを読んでつなぐ</p>
+      <ul class="how hidden" data-nan-rules>
+        <li>入場・参加無料。投票権・Gi・金銭にはなりません</li>
+        <li>活動記録でつなぐ。名前と姿は出る。番号は出ない</li>
+        <li>期間中に走った日が7日で参加</li>
+        <li>1日1回。順は語った→きつい→ふつう</li>
+        <li>𝕏でシェアすると語った。新記録のときだけドヤる</li>
+        <li>記録の点数は使わない。サーバーが今日だけを数える</li>
+      </ul>
       <div class="chips" data-ba-modes>
         <button type="button" class="chip" data-ba-mode="easy">ふつう</button>
         <button type="button" class="chip on" data-ba-mode="hard">きつい</button>
@@ -250,6 +260,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.68"></script>
+  <script src="app.js?v=0.4.69"></script>
 </body>
 </html>

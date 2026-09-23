@@ -4,8 +4,8 @@ compatibility_date = "2026-03-01"
 workers_dev = true
 account_id = "14479f8c9f6580f40fc8bb057556144c"
 
-# Secrets: DISCORD_CLIENT_SECRET
-# Public client id is [vars] (not a secret).
+# Secrets: DISCORD_CLIENT_SECRET (never Pages).
+# Cue pin 七日: vars CAMPAIGN_START / CAMPAIGN_END = YYYY-MM-DD JST inclusive.
 
 [vars]
 ALLOWED_ORIGINS = "https://gpro8.github.io"
