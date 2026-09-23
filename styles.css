@@ -36,21 +36,15 @@ html, body {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
 }
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.9;
-}
-html[data-theme="yin"] body::before {
+html[data-theme="yin"] body {
+  background-color: var(--bg);
   background-image:
     linear-gradient(30deg, var(--wagara) 12%, transparent 12.5%, transparent 50%, var(--wagara) 50.5%, var(--wagara) 62%, transparent 62.5%),
     linear-gradient(150deg, var(--wagara) 12%, transparent 12.5%, transparent 50%, var(--wagara) 50.5%, var(--wagara) 62%, transparent 62.5%);
   background-size: 28px 48px;
 }
-html[data-theme="yang"] body::before {
+html[data-theme="yang"] body {
+  background-color: var(--bg);
   background-image:
     radial-gradient(circle at 50% 100%, transparent 11px, var(--wagara) 12px, transparent 13px),
     radial-gradient(circle at 0 100%, transparent 11px, var(--wagara) 12px, transparent 13px),
@@ -58,13 +52,16 @@ html[data-theme="yang"] body::before {
   background-size: 32px 16px;
   background-position: 0 0, 16px 0, 16px 0;
 }
-body.playing::before { opacity: 0; }
+body.playing {
+  background-image: none;
+}
 #app { position: relative; z-index: 1; }
 .theme-btn {
+  appearance: none;
   position: fixed;
   top: calc(10px + var(--safe-t));
   right: calc(12px + var(--safe-r));
-  z-index: 15;
+  z-index: 20;
   width: 44px;
   height: 44px;
   border-radius: 999px;

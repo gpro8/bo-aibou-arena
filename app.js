@@ -1,4 +1,4 @@
-const VERSION = "0.4.60";
+const VERSION = "0.4.61";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1018,7 +1018,9 @@ function raiseSave() {
 }
 
 function renderSetup() {
+  if (!state.data) return;
   const modes = $("[data-modes]");
+  if (!modes) return;
   modes.innerHTML = MODES.map(
     (m) =>
       `<button type="button" class="chip${m.id === state.mode.id ? " on" : ""}" data-mode="${m.id}">${m.label}<br><span>${m.secs}秒</span></button>`
@@ -2460,10 +2462,11 @@ async function main() {
   const ver = $("[data-ver]");
   if (ver) ver.textContent = `v${VERSION}`;
   loadStickSide();
-  bootTheme();
   consumeKatsudoReturn();
   renderSetup();
+}
 
+function bindUi() {
   bindStick();
   window.addEventListener("resize", syncPlayGate);
   window.addEventListener("orientationchange", () => setTimeout(syncPlayGate, 200));
@@ -2595,4 +2598,6 @@ async function main() {
   });
 }
 
-main();
+bootTheme();
+bindUi();
+main().catch(() => {});
