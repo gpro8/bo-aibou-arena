@@ -14,15 +14,16 @@ function padNo(n) {
   return `No.${String(x).padStart(3, "0")}`;
 }
 
-function cardHtml(e) {
+function cardHtml(e, seen) {
   const job = e.job ? `<span class="chip">${esc(e.job)}</span>` : "";
+  const met = seen.has(e.id) ? `<span class="chip">見た</span>` : "";
   return `<button class="card" type="button" data-id="${esc(e.id)}" aria-label="${esc(e.name)}">
     <div class="card-art"><img src="${esc(e.image)}" alt="" width="640" height="640" loading="lazy" decoding="async"></div>
     <div class="card-meta">
       <div class="no">${padNo(e.no)}</div>
       <h2>${esc(e.name)}</h2>
       <div class="en">${esc(e.nameEn || "")}</div>
-      <div class="chips">${job}</div>
+      <div class="chips">${job}${met}</div>
     </div>
   </button>`;
 }
@@ -32,11 +33,12 @@ function sec(title, inner) {
   return `<section class="sec"><h3>${esc(title)}</h3>${inner}</section>`;
 }
 
-function modalHtml(e) {
+function modalHtml(e, seen) {
   const bits = (e.fields || [])
     .filter((row) => Array.isArray(row) && row[0] && row[1])
     .map(([k, v]) => sec(k, `<p>${esc(v)}</p>`))
     .join("");
+  const met = seen.has(e.id) ? sec("活動記録", "<p>きついの場で見た</p>") : "";
   return `
     <div class="modal-head">
       <div>
@@ -47,20 +49,27 @@ function modalHtml(e) {
       <button class="close" type="button" data-close>閉じる</button>
     </div>
     <div class="modal-art"><img src="${esc(e.image)}" alt="${esc(e.name)}" width="720" height="720" decoding="async"></div>
-    <div class="sections">${bits}</div>`;
+    <div class="sections">${bits}${met}</div>`;
 }
 
 async function main() {
   const res = await fetch("./data/entries.json");
   const data = await res.json();
   const entries = data.entries || [];
+  let seen = new Set();
+  try {
+    const o = JSON.parse(localStorage.getItem("bo-aibou-katsudo") || "null");
+    if (o && Array.isArray(o.seen)) seen = new Set(o.seen.filter((s) => typeof s === "string"));
+  } catch {
+    seen = new Set();
+  }
   $("[data-kicker]").textContent = data.kicker || "相棒あそび";
   $("[data-title]").textContent = data.title || "敵図鑑";
   $("[data-blurb]").textContent = data.blurb || "";
   $("[data-license]").textContent = data.licenseNote || "";
   $("[data-count]").textContent = `${entries.length} 体`;
   const grid = $("[data-grid]");
-  grid.innerHTML = entries.map(cardHtml).join("");
+  grid.innerHTML = entries.map((e) => cardHtml(e, seen)).join("");
 
   const scrim = $("[data-scrim]");
   const body = $("[data-modal]");
@@ -69,7 +78,7 @@ async function main() {
   function open(id) {
     const e = byId[id];
     if (!e) return;
-    body.innerHTML = modalHtml(e);
+    body.innerHTML = modalHtml(e, seen);
     scrim.classList.add("open");
     history.replaceState(null, "", `#${encodeURIComponent(id)}`);
   }

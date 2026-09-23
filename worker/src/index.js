@@ -75,12 +75,25 @@ function cleanDays(list) {
   return out.slice(-400);
 }
 
+function cleanSeen(list) {
+  const allow = new Set(["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki"]);
+  const out = [];
+  const have = new Set();
+  for (const s of Array.isArray(list) ? list : []) {
+    if (!allow.has(s) || have.has(s)) continue;
+    have.add(s);
+    out.push(s);
+  }
+  return out;
+}
+
 function cleanRecord(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
   const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
   return {
     v: 1,
     days: cleanDays(o.days),
+    seen: cleanSeen(o.seen),
     hardClears,
     title: o.title === "kitsui-nobiru" || hardClears > 0 ? "kitsui-nobiru" : "",
   };
@@ -92,6 +105,7 @@ function publicRecord(rec) {
     ok: true,
     linked: true,
     days: r.days,
+    seen: r.seen,
     hardClears: r.hardClears,
     title: r.title,
     dayCount: r.days.length,
@@ -225,6 +239,7 @@ async function handleSync(env, request) {
   const incoming = cleanRecord(body);
   const rec = await loadUser(env, ses.uid);
   rec.days = cleanDays([...rec.days, ...incoming.days]);
+  rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
   rec.hardClears = Math.max(rec.hardClears, Math.min(incoming.hardClears, rec.hardClears + 50));
   if (incoming.title === "kitsui-nobiru" || rec.hardClears > 0) rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
@@ -250,6 +265,7 @@ async function handleStamp(env, request) {
   const rec = await loadUser(env, ses.uid);
   if (!rec.days.includes(day)) rec.days.push(day);
   rec.days = cleanDays(rec.days);
+  rec.seen = cleanSeen([...(rec.seen || []), ...(cleanRecord(body).seen || [])]);
   rec.hardClears = Math.min(99999, rec.hardClears + 1);
   rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
