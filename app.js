@@ -1,4 +1,4 @@
-const VERSION = "0.4.64";
+const VERSION = "0.4.65";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -35,6 +35,7 @@ const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
 const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
 const THEME_KEY = "bo-aibou-theme";
 const KATSUDO_SES = "bo-aibou-katsudo-ses";
+const KATSUDO_PROF = "bo-aibou-katsudo-prof";
 const SEEN_STEMS = ["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki"];
 const WELL_PAD = 30;
 function buzz(pat) {
@@ -151,6 +152,7 @@ function show(name) {
     paintKatsudo();
     if (loadKatsudoSes()) pullKatsudo();
   }
+  if (name === "ba") loadBa();
   if (name === "play") {
     ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
@@ -544,7 +546,31 @@ function loadKatsudoSes() {
 function saveKatsudoSes(tok) {
   try {
     if (tok) localStorage.setItem(KATSUDO_SES, tok);
-    else localStorage.removeItem(KATSUDO_SES);
+    else {
+      localStorage.removeItem(KATSUDO_SES);
+      localStorage.removeItem(KATSUDO_PROF);
+    }
+  } catch {
+    /* guest */
+  }
+}
+
+function loadKatsudoProf() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KATSUDO_PROF) || "null");
+    if (!o || typeof o !== "object") return { name: "", av: "" };
+    const name = String(o.name || "").replace(/[<>]/g, "").trim().slice(0, 32);
+    const av = typeof o.av === "string" && o.av.startsWith("https://cdn.discordapp.com/") ? o.av : "";
+    return { name, av };
+  } catch {
+    return { name: "", av: "" };
+  }
+}
+
+function saveKatsudoProf(p) {
+  try {
+    if (!p || !p.name) localStorage.removeItem(KATSUDO_PROF);
+    else localStorage.setItem(KATSUDO_PROF, JSON.stringify({ name: String(p.name).slice(0, 32), av: p.av || "" }));
   } catch {
     /* guest */
   }
@@ -597,6 +623,7 @@ async function pullKatsudo() {
   }
   if (got.ok) {
     mergeKatsudoRemote(got.data);
+    if (got.data && got.data.name) saveKatsudoProf({ name: got.data.name, av: got.data.av || "" });
     const local = loadKatsudo();
     await katsudoFetch("/v1/sync", {
       method: "POST",
@@ -799,16 +826,97 @@ function paintKatsudo() {
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
   if (hello) hello.classList.toggle("hidden", !linked);
+  const prof = loadKatsudoProf();
+  const av = $("[data-dc-ava]");
+  const nm = $("[data-dc-name]");
+  const mark = $("[data-dc-mark]");
+  if (av) {
+    if (linked && prof.av) {
+      av.src = prof.av;
+      av.classList.remove("hidden");
+    } else {
+      av.removeAttribute("src");
+      av.classList.add("hidden");
+    }
+  }
+  if (nm) nm.textContent = linked && prof.name ? prof.name : "";
+  if (mark) mark.classList.toggle("hidden", Boolean(linked && prof.av));
   const link = $("[data-katsudo-link]");
   if (link) {
     link.textContent = linked
-      ? "Discordの番号で残す（この端末と同期）"
-      : "この端末に残る。つなぐとDiscordの番号で残す";
+      ? "Discordの名前で残す（番号は出ない）。場にも載せられる"
+      : "この端末に残る。つなぐとDiscordの名前で残す";
   }
   const connect = $("[data-katsudo-connect]");
   const unlink = $("[data-katsudo-unlink]");
   if (connect) connect.classList.toggle("hidden", linked);
   if (unlink) unlink.classList.toggle("hidden", !linked);
+}
+
+let baMode = "hard";
+
+function baRow(r) {
+  const name = String(r.name || "走った人").replace(/[<>]/g, "");
+  const av = typeof r.av === "string" && r.av.startsWith("https://cdn.discordapp.com/") ? r.av : "";
+  const img = av
+    ? `<img class="dc-ava" src="${av}" alt="" width="32" height="32" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="dc-ava ba-ph"></span>`;
+  const n = Number(r.n) || 0;
+  const score = Math.max(0, Math.min(99999, Number(r.score) || 0));
+  return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-score">${score}</span></li>`;
+}
+
+async function loadBa() {
+  $$("[data-ba-mode]").forEach((b) => b.classList.toggle("on", b.dataset.baMode === baMode));
+  const list = $("[data-ba-list]");
+  const empty = $("[data-ba-empty]");
+  try {
+    const res = await fetch(`${KATSUDO_API}/v1/ba?mode=${baMode}`, { headers: { Accept: "application/json" } });
+    const data = await res.json();
+    const rows = data && Array.isArray(data.rows) ? data.rows : [];
+    if (list) list.innerHTML = rows.map(baRow).join("");
+    if (empty) {
+      empty.textContent = "まだ誰も載っていない";
+      empty.classList.toggle("hidden", rows.length > 0);
+    }
+  } catch {
+    if (list) list.innerHTML = "";
+    if (empty) {
+      empty.textContent = "場を読めませんでした";
+      empty.classList.remove("hidden");
+    }
+  }
+}
+
+async function postBa() {
+  const run = state.last;
+  if (!run) return;
+  if (!loadKatsudoSes()) {
+    showToast("つなぐと場に載せる");
+    return;
+  }
+  const mode = run.mode === "easy" ? "easy" : "hard";
+  const got = await katsudoFetch("/v1/ba", {
+    method: "POST",
+    body: JSON.stringify({ mode, score: run.score, version: VERSION }),
+  });
+  if (got.status === 401) {
+    saveKatsudoSes("");
+    showToast("つなぐと場に載せる");
+    return;
+  }
+  if (got.status === 429) {
+    showToast("少し待って");
+    return;
+  }
+  if (got.ok) {
+    showToast("載せた");
+    killGame();
+    baMode = mode;
+    show("ba");
+    return;
+  }
+  showToast("載せられませんでした");
 }
 
 function loadStickSide() {
@@ -2066,6 +2174,7 @@ function bootArena() {
         combo: this.maxCombo,
         rec,
         hard,
+        mode: mode.id,
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
@@ -2085,6 +2194,8 @@ function bootArena() {
       paintKatsudo();
       paintRec();
       paintFlagCard(state.last);
+      const baBtn = $("[data-ba-post]");
+      if (baBtn) baBtn.classList.toggle("hidden", !loadKatsudoSes());
       const pause = $("#pause-ov");
       const result = $("#result-ov");
       if (pause) pause.classList.add("hidden");
@@ -2533,6 +2644,16 @@ function bindUi() {
         saveKatsudoSes("");
         paintKatsudo();
       });
+      return;
+    }
+    const baChip = hit(ev, "[data-ba-mode]");
+    if (baChip) {
+      baMode = baChip.dataset.baMode === "easy" ? "easy" : "hard";
+      loadBa();
+      return;
+    }
+    if (hit(ev, "[data-ba-post]")) {
+      postBa();
       return;
     }
     if (hit(ev, "[data-how]")) {

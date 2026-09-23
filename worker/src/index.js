@@ -114,6 +114,59 @@ function publicRecord(rec) {
   };
 }
 
+function cleanName(s) {
+  return String(s || "")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 32);
+}
+
+function avatarUrl(id, hash) {
+  if (hash && /^a_[a-f0-9]+$/i.test(hash)) {
+    return `https://cdn.discordapp.com/avatars/${id}/${hash}.gif?size=64`;
+  }
+  if (hash && /^[a-f0-9]+$/i.test(hash)) {
+    return `https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=64`;
+  }
+  let idx = 0;
+  try {
+    idx = Number(BigInt(id) >> 22n) % 6;
+  } catch {
+    idx = 0;
+  }
+  return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
+}
+
+function publicAv(av) {
+  return typeof av === "string" && av.startsWith("https://cdn.discordapp.com/") ? av : "";
+}
+
+async function saveProfile(env, uid, me) {
+  const name = cleanName(me && me.global_name) || cleanName(me && me.username) || "走った人";
+  const av = avatarUrl(uid, me && me.avatar);
+  await kvPut(env, `p:${uid}`, { name, av, t: Date.now() });
+  return { name, av };
+}
+
+async function loadProfile(env, uid) {
+  const p = await kvJson(env, `p:${uid}`);
+  if (!p || typeof p !== "object") return { name: "", av: "" };
+  return { name: cleanName(p.name), av: publicAv(p.av) };
+}
+
+async function publicMe(env, uid, rec) {
+  const p = await loadProfile(env, uid);
+  return { ...publicRecord(rec), name: p.name, av: p.av };
+}
+
+function cleanMode(m) {
+  return m === "hard" ? "hard" : m === "easy" ? "easy" : "";
+}
+
+const BA_CAP = 50;
+const SCORE_MAX = 99999;
+
 async function kvJson(env, key) {
   if (!env.KATSUDO) return null;
   const raw = await env.KATSUDO.get(key);
@@ -212,6 +265,7 @@ async function handleCallback(url, env) {
   const me = await meRes.json();
   const uid = String(me.id || "");
   if (!/^\d{5,30}$/.test(uid)) return err("user");
+  await saveProfile(env, uid, me);
   const session = bytesHex(24);
   await kvPut(env, `ses:${session}`, { uid }, SES_TTL);
   const rec = await loadUser(env, uid);
@@ -223,7 +277,7 @@ async function handleMe(env, request) {
   const ses = await sessionUid(env, request);
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   const rec = await loadUser(env, ses.uid);
-  return json(publicRecord(rec), 200, env, request);
+  return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
 async function handleSync(env, request) {
@@ -246,7 +300,7 @@ async function handleSync(env, request) {
   rec.hardClears = Math.max(rec.hardClears, Math.min(incoming.hardClears, rec.hardClears + 50));
   if (incoming.title === "kitsui-nobiru" || rec.hardClears > 0) rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
-  return json(publicRecord(rec), 200, env, request);
+  return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
 async function handleStamp(env, request) {
@@ -272,7 +326,7 @@ async function handleStamp(env, request) {
   rec.hardClears = Math.min(99999, rec.hardClears + 1);
   rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
-  return json(publicRecord(rec), 200, env, request);
+  return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
 async function handleUnlink(env, request) {
@@ -280,6 +334,50 @@ async function handleUnlink(env, request) {
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   if (env.KATSUDO) await env.KATSUDO.delete(`ses:${ses.tok}`);
   return json({ ok: true, linked: false }, 200, env, request);
+}
+
+async function handleBaGet(env, request) {
+  const url = new URL(request.url);
+  const mode = cleanMode(url.searchParams.get("mode") || "hard") || "hard";
+  const raw = await kvJson(env, `ba:${mode}`);
+  const rows = Array.isArray(raw) ? raw : [];
+  const out = rows.slice(0, BA_CAP).map((r, i) => ({
+    n: i + 1,
+    name: cleanName(r && r.name) || "走った人",
+    av: publicAv(r && r.av),
+    score: Math.max(0, Math.min(SCORE_MAX, Number(r && r.score) || 0)),
+  }));
+  return json({ ok: true, mode, rows: out }, 200, env, request);
+}
+
+async function handleBaPost(env, request) {
+  const ses = await sessionUid(env, request);
+  if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
+  if (!(await rate(env, `rl:ba:${ses.uid}`, 8, 3600))) {
+    return json({ ok: false, error: "rate" }, 429, env, request);
+  }
+  let body = {};
+  try {
+    body = await request.json();
+  } catch {
+    body = {};
+  }
+  const mode = cleanMode(body.mode);
+  if (!mode) return json({ ok: false, error: "mode" }, 400, env, request);
+  const score = Math.max(0, Math.min(SCORE_MAX, Math.floor(Number(body.score) || 0)));
+  const prof = await loadProfile(env, ses.uid);
+  const raw = await kvJson(env, `ba:${mode}`);
+  const rows = Array.isArray(raw) ? raw.filter((r) => r && r.uid !== ses.uid) : [];
+  rows.push({
+    uid: ses.uid,
+    name: prof.name || "走った人",
+    av: prof.av,
+    score,
+    t: Date.now(),
+  });
+  rows.sort((a, b) => b.score - a.score || a.t - b.t);
+  await kvPut(env, `ba:${mode}`, rows.slice(0, BA_CAP));
+  return json({ ok: true, mode, score }, 200, env, request);
 }
 
 export default {
@@ -329,6 +427,15 @@ export default {
       const allowed = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim());
       if (!origin || !allowed.includes(origin)) return json({ ok: false, error: "origin" }, 403, env, request);
       return handleUnlink(env, request);
+    }
+    if (url.pathname === "/v1/ba" && request.method === "GET") {
+      return handleBaGet(env, request);
+    }
+    if (url.pathname === "/v1/ba" && request.method === "POST") {
+      const origin = request.headers.get("Origin") || "";
+      const allowed = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim());
+      if (!origin || !allowed.includes(origin)) return json({ ok: false, error: "origin" }, 403, env, request);
+      return handleBaPost(env, request);
     }
 
     return json({ ok: false, error: "not_found" }, 404, env, request);

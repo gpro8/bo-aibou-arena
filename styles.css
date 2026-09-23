@@ -294,6 +294,48 @@ body.playing #app {
   opacity: 0.45;
   filter: grayscale(1);
 }
+.dc-ava {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--line);
+}
+.ba-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ba-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.ba-n {
+  width: 1.6em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ba-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ba-score {
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+.ba-ph { display: inline-block; }
 [data-katsudo-connect] {
   display: inline-flex;
   align-items: center;
