@@ -28,12 +28,26 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"相棒あそび","inLanguage":"ja","url":"https://gpro8.github.io/bo-aibou-arena/","description":"BushiDAOの相棒あそび。図鑑の相棒と走る。入場・参加無料。金銭は出ない。","genre":"Action","playMode":"SinglePlayer","isAccessibleForFree":true,"publisher":{"@type":"Organization","name":"BushiDAO"}}
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.59">
+  <script>
+  (function () {
+    var t = "yin";
+    try {
+      var s = localStorage.getItem("bo-aibou-theme");
+      if (s === "yang" || s === "yin") t = s;
+    } catch (e) {}
+    document.documentElement.setAttribute("data-theme", t);
+  })();
+  </script>
+  <link rel="stylesheet" href="styles.css?v=0.4.60">
 </head>
 <body>
+  <button type="button" class="theme-btn" data-theme-toggle data-mode="yin" aria-label="陰">
+    <svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M11 1h2v4h-2zm0 18h2v4h-2zM1 11h4v2H1zm18 0h4v2h-4zM4.2 3.8l1.4-1.4 2.8 2.8-1.4 1.4zm11.4 15 1.4-1.4 2.8 2.8-1.4 1.4zM3.8 19.8l2.8-2.8 1.4 1.4-2.8 2.8zM15.6 5.2l2.8-2.8 1.4 1.4-2.8 2.8z"/></svg>
+    <svg class="ico-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 8 11A7 7 0 0 1 13 3z"/></svg>
+  </button>
   <div id="app">
     <section class="screen" data-screen="title">
-      <p class="kicker">BushiDAO</p>
+      <p class="kicker"><svg class="mark-tomoe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path fill="currentColor" d="M12 4a8 8 0 0 1 0 16 5 5 0 0 0 0-10 3 3 0 0 1 0-6z"/></svg>BushiDAO</p>
       <h1>相棒あそび</h1>
       <p class="blurb">図鑑の相棒と走る。入場・参加無料。</p>
       <p class="hint" data-own-rec></p>
@@ -59,7 +73,7 @@
         <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪。弾き。心は減らない）</li>
         <li>親玉の心が半分で半血。突の白い線は予告。走り出したら消える。直撃は大きい。親玉は弾かれない・吸い場にも吸われない。倒すと一息（虹の輪・弾き）</li>
         <li>速さはふつう / きついだけ。lvでは速くならない。終盤は敵が強い</li>
-        <li>走るたびに日の印（ふつうでも）。連続すると明日が楽しみ。きついを生き延びたら記録にボーナス（+50）と称号。会った敵の種類は敵図鑑で姿がわかる。𝕏で話すと語った（勝敗・難易度を問わない）</li>
+        <li>場の陰/陽は画面の色。走るたびに日の印（ふつうでも）。連続すると明日が楽しみ。きついを生き延びたら記録にボーナス（+50）と称号。会った敵の種類は敵図鑑で姿がわかる。𝕏で話すと語った（勝敗・難易度を問わない）</li>
         <li>連5で画面の縁が脈打つ。かわしは敵に当たる寸前。HUD（上のステータス）に記録が表示される。被弾でかわしは途切れる</li>
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
@@ -199,6 +213,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.59"></script>
+  <script src="app.js?v=0.4.60"></script>
 </body>
 </html>

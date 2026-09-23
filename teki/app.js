@@ -110,6 +110,26 @@ async function main() {
 
   const hash = decodeURIComponent((location.hash || "").replace(/^#/, ""));
   if (hash && byId[hash]) open(hash);
+
+  function paintThemeBtn() {
+    const btn = $("[data-theme-toggle]");
+    if (!btn) return;
+    const t = document.documentElement.getAttribute("data-theme") === "yang" ? "yang" : "yin";
+    btn.dataset.mode = t;
+    btn.setAttribute("aria-label", t === "yang" ? "陽" : "陰");
+  }
+  paintThemeBtn();
+  document.addEventListener("click", (ev) => {
+    if (!ev.target.closest("[data-theme-toggle]")) return;
+    const next = document.documentElement.getAttribute("data-theme") === "yang" ? "yin" : "yang";
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("bo-aibou-theme", next);
+    } catch {
+      /* guest */
+    }
+    paintThemeBtn();
+  });
 }
 
 main().catch((err) => {

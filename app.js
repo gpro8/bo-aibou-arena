@@ -1,4 +1,4 @@
-const VERSION = "0.4.59";
+const VERSION = "0.4.60";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -28,11 +28,12 @@ const MODES = [
   { id: "hard", label: "きつい", secs: 80, pace: 1.35 },
 ];
 const STAGES = [
-  { id: "yang", label: "陽", bg: 0xe8dcc8, foe: 0x4a2060 },
-  { id: "yin", label: "陰", bg: 0x1b1916, foe: 0x5a2878 },
+  { id: "yang", label: "陽", bg: 0xf7ecd4, foe: 0x4a2060 },
+  { id: "yin", label: "陰", bg: 0x12100e, foe: 0x5a2878 },
 ];
 const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
 const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
+const THEME_KEY = "bo-aibou-theme";
 const KATSUDO_SES = "bo-aibou-katsudo-ses";
 const SEEN_STEMS = ["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki"];
 const WELL_PAD = 30;
@@ -79,7 +80,7 @@ function kit(e) {
 const state = {
   data: null,
   mode: MODES[0],
-  stage: STAGES[0],
+  stage: STAGES[1],
   mate: null,
   game: null,
   last: null,
@@ -92,10 +93,47 @@ function paintBossLabel() {
   const el = $(".bosslabel");
   if (!el) return;
   const yang = state.stage && state.stage.id === "yang";
-  const col = yang ? "#12100e" : "#f8b500";
+  const col = yang ? "#3a2e22" : "#f8b500";
   el.style.setProperty("color", col, "important");
   el.style.setProperty("-webkit-text-fill-color", col, "important");
   el.style.setProperty("text-shadow", "none", "important");
+}
+
+function themeId() {
+  return document.documentElement.getAttribute("data-theme") === "yang" ? "yang" : "yin";
+}
+
+function paintThemeBtn() {
+  const btn = $("[data-theme-toggle]");
+  if (!btn) return;
+  const t = themeId();
+  btn.dataset.mode = t;
+  btn.setAttribute("aria-label", t === "yang" ? "陽" : "陰");
+}
+
+function applyTheme(id) {
+  const t = id === "yang" ? "yang" : "yin";
+  document.documentElement.setAttribute("data-theme", t);
+  const meta = $("meta[name='theme-color']");
+  if (meta) meta.setAttribute("content", t === "yang" ? "#f7ecd4" : "#12100e");
+  try {
+    localStorage.setItem(THEME_KEY, t);
+  } catch {
+    /* guest */
+  }
+  state.stage = STAGES.find((s) => s.id === t) || STAGES[1];
+  paintThemeBtn();
+}
+
+function bootTheme() {
+  let t = "yin";
+  try {
+    const s = localStorage.getItem(THEME_KEY);
+    if (s === "yang" || s === "yin") t = s;
+  } catch {
+    t = "yin";
+  }
+  applyTheme(t);
 }
 
 function show(name) {
@@ -2422,6 +2460,7 @@ async function main() {
   const ver = $("[data-ver]");
   if (ver) ver.textContent = `v${VERSION}`;
   loadStickSide();
+  bootTheme();
   consumeKatsudoReturn();
   renderSetup();
 
@@ -2487,7 +2526,12 @@ async function main() {
     }
     const stage = ev.target.closest("[data-stage]");
     if (stage) {
-      state.stage = STAGES.find((s) => s.id === stage.dataset.stage);
+      applyTheme(stage.dataset.stage);
+      renderSetup();
+      return;
+    }
+    if (ev.target.closest("[data-theme-toggle]")) {
+      applyTheme(themeId() === "yang" ? "yin" : "yang");
       renderSetup();
       return;
     }
