@@ -266,6 +266,40 @@ body.playing #app {
   padding: 18px 16px 22px;
 }
 .hidden { display: none !important; }
+.dc-hello {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--gold);
+  font-size: 18px;
+}
+.dc-mark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 50%;
+  background: #5865f2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-mark svg {
+  width: 13px;
+  height: 10px;
+  display: block;
+  pointer-events: none;
+}
+.dc-mark.dc-mute {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+[data-katsudo-connect] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 .kicker { letter-spacing: 0.2em; color: var(--gold); margin: 0; font-size: 12px; }
 .ver {
   margin: 18px 0 0;
@@ -424,13 +458,16 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   justify-content: center;
   gap: 4px;
   flex-shrink: 0;
+  color: #fff8e8;
+  background: #1b1815;
+  border-color: rgba(248, 181, 0, 0.55);
 }
-#hud .pause i {
-  display: block;
-  width: 4px;
+#hud .pause svg {
+  width: 12px;
   height: 14px;
-  background: #fff8e8;
-  border-radius: 1px;
+  display: block;
+  fill: currentColor;
+  pointer-events: none;
 }
 #hud [data-hud-skill],
 #hud [data-hud-combo],

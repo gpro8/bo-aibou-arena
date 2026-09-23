@@ -1,4 +1,4 @@
-const VERSION = "0.4.63";
+const VERSION = "0.4.64";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -798,10 +798,7 @@ function paintKatsudo() {
   }
   const linked = Boolean(loadKatsudoSes());
   const hello = $("[data-katsudo-hello]");
-  if (hello) {
-    hello.textContent = linked ? "つながった" : "";
-    hello.classList.toggle("hidden", !linked);
-  }
+  if (hello) hello.classList.toggle("hidden", !linked);
   const link = $("[data-katsudo-link]");
   if (link) {
     link.textContent = linked
