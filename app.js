@@ -1,4 +1,4 @@
-const VERSION = "0.4.52";
+const VERSION = "0.4.53";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -99,6 +99,7 @@ function show(name) {
   $$(".screen").forEach((el) => el.classList.toggle("hidden", el.dataset.screen !== name));
   document.body.classList.toggle("playing", name === "play");
   if (name === "title" || name === "setup") paintRec();
+  if (name === "katsudo") paintKatsudo();
   if (name === "play") {
     ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
@@ -312,6 +313,68 @@ function loadBest() {
 
 function recKey(mateId, modeId) {
   return `bo-aibou:${mateId}:${modeId}`;
+}
+
+function jstDay() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function loadKatsudo() {
+  try {
+    const o = JSON.parse(localStorage.getItem("bo-aibou-katsudo") || "null");
+    if (!o || typeof o !== "object") return { v: 1, hardClears: 0, days: [], title: "" };
+    const days = Array.isArray(o.days) ? o.days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)) : [];
+    const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
+    return {
+      v: 1,
+      hardClears,
+      days,
+      title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
+    };
+  } catch {
+    return { v: 1, hardClears: 0, days: [], title: "" };
+  }
+}
+
+function saveKatsudo(o) {
+  try {
+    localStorage.setItem("bo-aibou-katsudo", JSON.stringify(o));
+  } catch {
+    /* guest device */
+  }
+}
+
+function stampHardWin() {
+  const o = loadKatsudo();
+  const day = jstDay();
+  const freshDay = !o.days.includes(day);
+  if (freshDay) o.days.push(day);
+  if (o.days.length > 400) o.days = o.days.slice(-400);
+  o.hardClears += 1;
+  o.title = "kitsui-nobiru";
+  o.v = 1;
+  saveKatsudo(o);
+  return { freshDay, hardClears: o.hardClears };
+}
+
+function paintKatsudo() {
+  const o = loadKatsudo();
+  const has = o.hardClears > 0;
+  const empty = $("[data-katsudo-empty]");
+  const filled = $("[data-katsudo-filled]");
+  if (empty) empty.classList.toggle("hidden", has);
+  if (filled) filled.classList.toggle("hidden", !has);
+  const title = $("[data-katsudo-title]");
+  const days = $("[data-katsudo-days]");
+  const clears = $("[data-katsudo-clears]");
+  if (title) title.textContent = has ? "きついを生き延びた" : "";
+  if (days) days.textContent = has ? `走った日 ${o.days.length}日` : "";
+  if (clears) clears.textContent = has ? `きついクリア ${o.hardClears}回` : "";
 }
 
 function loadStickSide() {
@@ -1557,6 +1620,19 @@ function bootArena() {
       if (raiseBtn) raiseBtn.textContent = win ? "𝕏でドヤる" : "𝕏でシェアする";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
+      const kEl = $("[data-result-katsudo]");
+      if (kEl) {
+        if (win && mode.id === "hard") {
+          const stamped = stampHardWin();
+          kEl.textContent = stamped.freshDay
+            ? "活動記録に日の印 · きついを生き延びた"
+            : "活動記録 · きついを生き延びた";
+          kEl.classList.remove("hidden");
+        } else {
+          kEl.textContent = "";
+          kEl.classList.add("hidden");
+        }
+      }
       paintRec();
       paintFlagCard(state.last);
       const pause = $("#pause-ov");

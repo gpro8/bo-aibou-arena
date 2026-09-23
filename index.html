@@ -28,7 +28,7 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"相棒あそび","inLanguage":"ja","url":"https://gpro8.github.io/bo-aibou-arena/","description":"BushiDAOの相棒あそび。図鑑の相棒と走る。入場・参加無料。金銭は出ない。","genre":"Action","playMode":"SinglePlayer","isAccessibleForFree":true,"publisher":{"@type":"Organization","name":"BushiDAO"}}
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.52">
+  <link rel="stylesheet" href="styles.css?v=0.4.53">
 </head>
 <body>
   <div id="app">
@@ -40,6 +40,7 @@
       <div class="col">
         <button type="button" class="btn gold" data-go="setup">遊ぶ</button>
         <button type="button" class="btn ghost" data-how>遊び方</button>
+        <button type="button" class="btn ghost" data-go="katsudo">活動記録</button>
         <a class="btn ghost" href="https://gpro8.github.io/bo-aibou-zukan/" target="_blank" rel="noopener noreferrer">相棒図鑑</a>
         <a class="btn ghost" href="./teki/">敵図鑑</a>
       </div>
@@ -58,7 +59,7 @@
         <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪。弾き。心は減らない）</li>
         <li>親玉の心が半分で半血。突の白い線は予告。走り出したら消える。直撃は大きい。親玉は弾かれない・吸い場にも吸われない。倒すと一息（虹の輪・弾き）</li>
         <li>速さはふつう / きついだけ。lvでは速くならない。終盤は敵が強い</li>
-        <li>きついを生き延びたら記録にボーナス（+50）</li>
+        <li>きついを生き延びたら記録にボーナス（+50）。この端末の活動記録に日の印と称号</li>
         <li>連5で画面の縁が脈打つ。かわしは敵に当たる寸前。HUD（上のステータス）に記録が表示される。被弾でかわしは途切れる</li>
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
@@ -69,6 +70,19 @@
         <button type="button" class="btn gold" data-go="title">もどる</button>
         <a class="btn ghost" href="./teki/">敵図鑑</a>
       </div>
+    </section>
+
+    <section class="screen hidden" data-screen="katsudo">
+      <h1>活動記録</h1>
+      <p class="hint" data-katsudo-empty>きついを生き延びると、この端末に日の印と称号がつく</p>
+      <div data-katsudo-filled class="hidden">
+        <h2>称号</h2>
+        <p class="thanks" data-katsudo-title></p>
+        <p class="hint" data-katsudo-days></p>
+        <p class="hint" data-katsudo-clears></p>
+      </div>
+      <p class="hint">この端末に残る。投票権・Gi・金銭にはなりません</p>
+      <button type="button" class="btn gold" data-go="title">もどる</button>
     </section>
 
     <section class="screen hidden" data-screen="setup">
@@ -148,6 +162,7 @@
         <img class="flag-card hidden" data-flag-card alt="">
         <p class="hint" data-result-line></p>
         <p class="hint" data-result-rec></p>
+        <p class="hint hidden" data-result-katsudo></p>
         <div class="col">
           <button type="button" class="btn gold" data-raise>𝕏でドヤる</button>
           <button type="button" class="btn gold" data-again>もういちど</button>
@@ -167,6 +182,6 @@
     </section>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.52"></script>
+  <script src="app.js?v=0.4.53"></script>
 </body>
 </html>
