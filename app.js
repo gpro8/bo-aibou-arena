@@ -1,4 +1,4 @@
-const VERSION = "0.4.51";
+const VERSION = "0.4.52";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -16,11 +16,11 @@ const FOE_SHEETS = {
 const FOE_NAMES = {
   small: { stem: "chiri", jp: "塵坊", en: "Chiri-bou" },
   thick: { stem: "nuppe", jp: "ぬっぺ", en: "Nuppe" },
-  brute: { stem: "go", jp: "剛", en: "TBD" },
+  brute: { stem: "go", jp: "唐傘", en: "UmBoo" },
   fly: { stem: "kama", jp: "カマイッタ", en: "Kama" },
   rebound: { stem: "kitsunebi", jp: "狐火", en: "Kitsunebi" },
   well: { stem: "suiko", jp: "吸い子", en: "Suiko" },
-  boss: { stem: "gyuki", jp: "親玉", en: "TBD" },
+  boss: { stem: "gyuki", jp: "牛鬼", en: "Moogre" },
 };
 
 const MODES = [

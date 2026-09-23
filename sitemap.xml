@@ -4,4 +4,8 @@
     <loc>https://gpro8.github.io/bo-aibou-arena/</loc>
     <changefreq>weekly</changefreq>
   </url>
+  <url>
+    <loc>https://gpro8.github.io/bo-aibou-arena/teki/</loc>
+    <changefreq>weekly</changefreq>
+  </url>
 </urlset>

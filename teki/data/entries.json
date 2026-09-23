@@ -1,0 +1,106 @@
+{
+  "title": "敵図鑑",
+  "kicker": "相棒あそび",
+  "blurb": "時間で職が変わる妖怪の影。相棒図鑑とは別の棚。入場・参加無料。",
+  "licenseNote": "あそびの敵。投票権にはなりません。Gi もつきません。",
+  "entries": [
+    {
+      "id": "chiri",
+      "no": 1,
+      "name": "塵坊",
+      "nameEn": "Chiri-bou",
+      "job": "小",
+      "image": "art/chiri.avif",
+      "fields": [
+        ["職", "小"],
+        ["英語", "Chiri-bou"],
+        ["動き", "早い。群れ。心は少ない"],
+        ["時間", "序盤"]
+      ]
+    },
+    {
+      "id": "nuppe",
+      "no": 2,
+      "name": "ぬっぺ",
+      "nameEn": "Nuppe",
+      "job": "厚",
+      "image": "art/nuppe.avif",
+      "fields": [
+        ["職", "厚"],
+        ["英語", "Nuppe"],
+        ["動き", "遅い厚み。押してくる"],
+        ["時間", "中盤"]
+      ]
+    },
+    {
+      "id": "go",
+      "no": 3,
+      "name": "唐傘",
+      "nameEn": "UmBoo",
+      "job": "剛",
+      "image": "art/go.avif",
+      "fields": [
+        ["職", "剛"],
+        ["英語", "UmBoo"],
+        ["動き", "山吹で溜めて突く"],
+        ["時間", "中盤〜終盤"]
+      ]
+    },
+    {
+      "id": "kama",
+      "no": 4,
+      "name": "カマイッタ",
+      "nameEn": "Kama",
+      "job": "飛び",
+      "image": "art/kama.avif",
+      "fields": [
+        ["職", "飛び"],
+        ["英語", "Kama"],
+        ["動き", "距離を取る。鎌の斬撃"],
+        ["時間", "中盤〜終盤"]
+      ]
+    },
+    {
+      "id": "kitsunebi",
+      "no": 5,
+      "name": "狐火",
+      "nameEn": "Kitsunebi",
+      "job": "返り",
+      "image": "art/kitsunebi.avif",
+      "fields": [
+        ["職", "返り"],
+        ["英語", "Kitsunebi"],
+        ["動き", "人魂の火。一度跳ね返る"],
+        ["時間", "終盤より前"]
+      ]
+    },
+    {
+      "id": "suiko",
+      "no": 6,
+      "name": "吸い子",
+      "nameEn": "Suiko",
+      "job": "吸い場",
+      "image": "art/suiko.avif",
+      "fields": [
+        ["職", "吸い場"],
+        ["英語", "Suiko"],
+        ["動き", "井戸は遠く。吸うときだけ姿が出る"],
+        ["時間", "終盤。場に一体だけ"]
+      ]
+    },
+    {
+      "id": "gyuki",
+      "no": 7,
+      "name": "牛鬼",
+      "nameEn": "Moogre",
+      "job": "親玉",
+      "image": "art/gyuki.avif",
+      "fields": [
+        ["職", "親玉"],
+        ["英語", "Moogre"],
+        ["動き", "突は白い線の予告。弾かれない。吸い場にも吸われない"],
+        ["時間", "半ばすぎ"]
+      ]
+    }
+  ]
+}
