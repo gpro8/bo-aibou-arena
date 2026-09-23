@@ -119,17 +119,21 @@ async function main() {
     btn.setAttribute("aria-label", t === "yang" ? "陽" : "陰");
   }
   paintThemeBtn();
-  document.addEventListener("click", (ev) => {
-    if (!ev.target.closest("[data-theme-toggle]")) return;
-    const next = document.documentElement.getAttribute("data-theme") === "yang" ? "yin" : "yang";
-    document.documentElement.setAttribute("data-theme", next);
-    try {
-      localStorage.setItem("bo-aibou-theme", next);
-    } catch {
-      /* guest */
-    }
-    paintThemeBtn();
-  });
+  const themeBtn = $("[data-theme-toggle]");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const next = document.documentElement.getAttribute("data-theme") === "yang" ? "yin" : "yang";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("bo-aibou-theme", next);
+      } catch {
+        /* guest */
+      }
+      paintThemeBtn();
+    });
+  }
 }
 
 main().catch((err) => {

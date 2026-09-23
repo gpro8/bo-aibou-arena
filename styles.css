@@ -55,25 +55,37 @@ html[data-theme="yang"] body {
 body.playing {
   background-image: none;
 }
-#app { position: relative; z-index: 1; }
+#app { position: relative; }
 .theme-btn {
   appearance: none;
-  position: fixed;
-  top: calc(10px + var(--safe-t));
-  right: calc(12px + var(--safe-r));
-  z-index: 20;
+  -webkit-appearance: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 5;
   width: 44px;
   height: 44px;
+  max-width: 44px;
+  max-height: 44px;
+  overflow: hidden;
+  touch-action: manipulation;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--gold);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   cursor: pointer;
+  pointer-events: auto;
 }
-.theme-btn svg { width: 22px; height: 22px; display: block; }
+.theme-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  pointer-events: none;
+}
 .theme-btn[data-mode="yang"] .ico-moon { display: none; }
 .theme-btn[data-mode="yin"] .ico-sun { display: none; }
 body.playing .theme-btn { display: none; }
@@ -311,6 +323,7 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 .row { justify-content: space-between; flex-wrap: wrap; }
 .btn {
   appearance: none;
+  touch-action: manipulation;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
@@ -557,7 +570,12 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   pointer-events: auto;
   padding: 24px;
 }
-#toast-ov.hidden { display: none !important; }
+#toast-ov.hidden,
+#raise-ov.hidden,
+#stick-ov.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
 #toast-ov p {
   margin: 0;
   color: var(--gold);

@@ -1,4 +1,4 @@
-const VERSION = "0.4.61";
+const VERSION = "0.4.62";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -47,6 +47,13 @@ function buzz(pat) {
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+function hit(ev, sel) {
+  let n = ev.target;
+  if (n && n.nodeType !== 1) n = n.parentElement;
+  while (n && typeof n.closest !== "function") n = n.parentNode;
+  return n && n.closest ? n.closest(sel) : null;
+}
 
 function field(e, key) {
   const row = (e.fields || []).find((x) => x[0] === key);
@@ -2467,7 +2474,21 @@ async function main() {
 }
 
 function bindUi() {
-  bindStick();
+  try {
+    bindStick();
+  } catch {
+    /* no stick */
+  }
+  const themeBtn = $("[data-theme-toggle]");
+  if (themeBtn) {
+    const toggle = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      applyTheme(themeId() === "yang" ? "yin" : "yang");
+      renderSetup();
+    };
+    themeBtn.addEventListener("click", toggle);
+  }
   window.addEventListener("resize", syncPlayGate);
   window.addEventListener("orientationchange", () => setTimeout(syncPlayGate, 200));
   if (window.visualViewport) {
@@ -2495,56 +2516,56 @@ function bindUi() {
   });
 
   document.body.addEventListener("click", (ev) => {
-    const go = ev.target.closest("[data-go]");
+    const go = hit(ev, "[data-go]");
     if (go) {
       killGame();
       if (go.dataset.go === "setup") renderSetup();
       show(go.dataset.go);
       return;
     }
-    if (ev.target.closest("#toast-ov")) {
+    if (hit(ev, "#toast-ov")) {
       hideToast();
       return;
     }
-    if (ev.target.closest("[data-katsudo-connect]")) {
+    if (hit(ev, "[data-katsudo-connect]")) {
       location.href = `${KATSUDO_API}/v1/oauth/start`;
       return;
     }
-    if (ev.target.closest("[data-katsudo-unlink]")) {
+    if (hit(ev, "[data-katsudo-unlink]")) {
       katsudoFetch("/v1/unlink", { method: "POST", body: "{}" }).finally(() => {
         saveKatsudoSes("");
         paintKatsudo();
       });
       return;
     }
-    if (ev.target.closest("[data-how]")) {
+    if (hit(ev, "[data-how]")) {
       show("how");
       return;
     }
-    const mode = ev.target.closest("[data-mode]");
+    const mode = hit(ev, "[data-mode]");
     if (mode) {
       state.mode = MODES.find((m) => m.id === mode.dataset.mode);
       renderSetup();
       return;
     }
-    const stage = ev.target.closest("[data-stage]");
+    const stage = hit(ev, "[data-stage]");
     if (stage) {
       applyTheme(stage.dataset.stage);
       renderSetup();
       return;
     }
-    if (ev.target.closest("[data-theme-toggle]")) {
+    if (hit(ev, "[data-theme-toggle]")) {
       applyTheme(themeId() === "yang" ? "yin" : "yang");
       renderSetup();
       return;
     }
-    const mate = ev.target.closest("[data-mate]");
+    const mate = hit(ev,"[data-mate]");
     if (mate) {
       state.mate = state.data.entries.find((e) => e.id === mate.dataset.mate);
       renderSetup();
       return;
     }
-    if (ev.target.closest("[data-run]")) {
+    if (hit(ev,"[data-run]")) {
       if (isCoarse()) {
         paintStickOv();
         const ov = $("#stick-ov");
@@ -2554,7 +2575,7 @@ function bindUi() {
       enterPlay();
       return;
     }
-    const side = ev.target.closest("[data-stick-side]");
+    const side = hit(ev,"[data-stick-side]");
     if (side) {
       saveStickSide(side.dataset.stickSide);
       const ov = $("#stick-ov");
@@ -2562,37 +2583,37 @@ function bindUi() {
       enterPlay();
       return;
     }
-    if (ev.target.closest("[data-pause]")) {
+    if (hit(ev,"[data-pause]")) {
       pausePlay();
       return;
     }
-    if (ev.target.closest("[data-resume]")) {
+    if (hit(ev,"[data-resume]")) {
       resumePlay();
       return;
     }
-    if (ev.target.closest("[data-quit]")) {
+    if (hit(ev,"[data-quit]")) {
       killGame();
       show("title");
       return;
     }
-    if (ev.target.closest("[data-raise]")) {
+    if (hit(ev,"[data-raise]")) {
       raiseFlag();
       return;
     }
-    if (ev.target.closest("[data-raise-copy]")) {
+    if (hit(ev,"[data-raise-copy]")) {
       raiseCopy();
       return;
     }
-    if (ev.target.closest("[data-raise-save]")) {
+    if (hit(ev,"[data-raise-save]")) {
       raiseSave();
       return;
     }
-    if (ev.target.closest("[data-raise-close]")) {
+    if (hit(ev,"[data-raise-close]")) {
       const ov = $("#raise-ov");
       if (ov) ov.classList.add("hidden");
       return;
     }
-    if (ev.target.closest("[data-again]")) {
+    if (hit(ev,"[data-again]")) {
       enterPlay();
     }
   });
