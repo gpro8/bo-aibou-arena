@@ -1,4 +1,4 @@
-const VERSION = "0.4.71";
+const VERSION = "0.4.72";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -690,16 +690,21 @@ function rememberSeen(stems) {
   return o;
 }
 
+let stampChain = Promise.resolve();
+
 function serverStamp(kinds) {
   if (!loadKatsudoSes()) return;
   const list = [...new Set((Array.isArray(kinds) ? kinds : []).filter((k) => k === "play" || k === "easy" || k === "hard" || k === "told"))];
   if (!list.length) return;
-  katsudoFetch("/v1/stamp", {
-    method: "POST",
-    body: JSON.stringify({ kinds: list, version: VERSION }),
-  })
+  stampChain = stampChain
+    .then(() =>
+      katsudoFetch("/v1/stamp", {
+        method: "POST",
+        body: JSON.stringify({ kinds: list, version: VERSION }),
+      })
+    )
     .then((got) => {
-      if (got.ok && got.data) mergeKatsudoRemote(got.data);
+      if (got && got.ok && got.data) mergeKatsudoRemote(got.data);
       paintNanMine();
     })
     .catch(() => {});
@@ -737,7 +742,7 @@ function stampHardWin() {
   saveKatsudo(o);
   serverStamp(["play", "hard"]);
   pushKatsudo(o);
-  return { freshDay, hardClears: o.hardClears };
+  return { freshDay, streak: streakCount(o.days, day), days: o.days.length, hardClears: o.hardClears };
 }
 
 function noteTold() {
@@ -2312,9 +2317,8 @@ function bootArena() {
         }
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
-      const played = stampPlayDay(mode.id);
-      let stamped = null;
-      if (win && hard) stamped = stampHardWin();
+      const stampedHard = Boolean(win && hard);
+      const played = stampedHard ? stampHardWin() : stampPlayDay(mode.id);
       state.last = {
         win,
         id: mate.id,
@@ -2338,7 +2342,7 @@ function bootArena() {
       if (kEl) {
         const o = loadKatsudo();
         const st = played.streak;
-        kEl.textContent = `連続 ${st}日 · 走った日 ${o.days.length}日${stamped ? ` · きついクリア ${o.hardClears}回` : ""}`;
+        kEl.textContent = `連続 ${st}日 · 走った日 ${o.days.length}日${stampedHard ? ` · きついクリア ${o.hardClears}回` : ""}`;
         kEl.classList.remove("hidden");
         if (played.freshDay) showToast(st >= 3 ? streakHonor(st) || "日の印" : "日の印");
       }

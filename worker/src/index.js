@@ -334,6 +334,14 @@ async function handleStamp(env, request) {
   rec.easy = cleanDays(rec.easy);
   rec.hard = cleanDays(rec.hard);
   rec.told = cleanDays(rec.told);
+  const latest = await loadUser(env, ses.uid);
+  rec.days = cleanDays([...(latest.days || []), ...(rec.days || [])]);
+  rec.easy = cleanDays([...(latest.easy || []), ...(rec.easy || [])]);
+  rec.hard = cleanDays([...(latest.hard || []), ...(rec.hard || [])]);
+  rec.told = cleanDays([...(latest.told || []), ...(rec.told || [])]);
+  rec.seen = cleanSeen([...(latest.seen || []), ...(rec.seen || [])]);
+  rec.hardClears = Math.max(latest.hardClears, rec.hardClears);
+  if (latest.title === "kitsui-nobiru") rec.title = "kitsui-nobiru";
   await saveUser(env, ses.uid, rec);
   await rememberNan(env, ses.uid);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
