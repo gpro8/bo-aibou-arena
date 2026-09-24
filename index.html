@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.69">
+  <link rel="stylesheet" href="styles.css?v=0.4.70">
 </head>
 <body>
   <div id="app">
@@ -80,7 +80,7 @@
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
         <li>新記録のときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
-        <li>七日の走：活動記録でつなぐ。期間中7日走ると参加。順は語った→きつい→ふつう。記録点は使わない。入場・参加無料。詳しくは順位表</li>
+        <li>七日の走：活動記録でつなぐ。この期間だけ（前も後も数えない）。期間中7日走ると参加。順は語った→きつい→ふつう。記録点は使わない。入場・参加無料。詳しくは順位表</li>
       </ul>
       <div class="row">
         <button type="button" class="btn gold" data-go="title">もどる</button>
@@ -97,7 +97,7 @@
           <svg viewBox="0 0 127.14 96.36" aria-hidden="true"><path fill="#fff" d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0 105.89 105.89 0 0 0 19.39 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14C129.24 52.84 122.09 29.11 107.7 8.07zM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.37-12.74S54 46 53.89 53 48.84 65.69 42.45 65.69zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.38-12.74S96.23 46 96.12 53 91.08 65.69 84.69 65.69z"/></svg>
         </button>
       </p>
-      <p class="hint" data-katsudo-join>記録のためにつなげる</p>
+      <p class="hint" data-katsudo-join>記録のためにつなげる。スマホは今のブラウザでつなぐ</p>
       <div class="dc-ask hidden" data-dc-ask>
         <p>接続を解除しますか？</p>
         <div class="row">
@@ -120,6 +120,12 @@
       <h2>語った</h2>
       <p class="hint" data-katsudo-told></p>
       <p class="hint" data-katsudo-told-honor></p>
+      <div class="nan-card" data-nan-mine>
+        <h2>七日の走</h2>
+        <p class="hint" data-nan-mine-phase>期間が決まるとここに出る</p>
+        <p class="thanks" data-nan-mine-stats></p>
+        <p class="hint">この期間だけ。前も後も数えない。上の日の印は別</p>
+      </div>
       <p class="hint">投票権・Gi・金銭にはなりません</p>
       <p class="hint" data-katsudo-link>この端末に残る。つなぐとDiscordの番号で残す</p>
       <div class="row">
@@ -136,11 +142,12 @@
         <button type="button" class="chip" data-ba-tab="nan">七日の走</button>
       </div>
       <p class="hint" data-ba-score-hint>つなぐと名前と姿が出る。番号は出ない</p>
-      <p class="hint hidden" data-ba-nan-hint>記録点は使わない。番号は出ない</p>
+      <p class="hint hidden" data-ba-nan-hint>この期間だけ。前も後も数えない。記録点は使わない。番号は出ない</p>
       <p class="hint hidden" data-nan-phase>開始前。ルールを読んでつなぐ</p>
       <ul class="how hidden" data-nan-rules>
         <li>入場・参加無料。投票権・Gi・金銭にはなりません</li>
         <li>活動記録でつなぐ。名前と姿は出る。番号は出ない</li>
+        <li>この期間だけ。前も後も数えない</li>
         <li>期間中に走った日が7日で参加</li>
         <li>1日1回。順は語った→きつい→ふつう</li>
         <li>𝕏でシェアすると語った。新記録のときだけドヤる</li>
@@ -260,6 +267,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.69"></script>
+  <script src="app.js?v=0.4.70"></script>
 </body>
 </html>

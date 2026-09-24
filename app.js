@@ -1,4 +1,4 @@
-const VERSION = "0.4.69";
+const VERSION = "0.4.70";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -150,6 +150,7 @@ function show(name) {
   if (name === "title" || name === "setup") paintRec();
   if (name === "katsudo") {
     paintKatsudo();
+    refreshNanMeta();
     if (loadKatsudoSes()) pullKatsudo();
   }
   if (name === "ba") loadBoard();
@@ -869,6 +870,7 @@ function paintKatsudo() {
   }
   const connect = $("[data-katsudo-connect]");
   if (connect) connect.classList.toggle("hidden", linked);
+  paintNanMine();
 }
 
 let baMode = "hard";
@@ -916,24 +918,73 @@ function loadBoard() {
   return loadBa();
 }
 
+let nanMeta = null;
+
+function inWinCount(list, win) {
+  const set = new Set(Array.isArray(win) ? win : []);
+  return (Array.isArray(list) ? list : []).filter((d) => set.has(d)).length;
+}
+
+function paintNanMine() {
+  const phase = $("[data-nan-mine-phase]");
+  const stats = $("[data-nan-mine-stats]");
+  if (!phase || !stats) return;
+  const o = loadKatsudo();
+  const m = nanMeta;
+  if (!m || !m.ok) {
+    phase.textContent = "期間が決まるとここに出る";
+    stats.textContent = "";
+    return;
+  }
+  const play = inWinCount(o.days, m.window);
+  const hard = inWinCount(o.hard, m.window);
+  const easy = inWinCount(o.easy, m.window);
+  const told = inWinCount(o.told, m.window);
+  const bits = `走${play} 語${told} きつい${hard} ふつう${easy}`;
+  if (m.practice || !m.start) {
+    phase.textContent = "開始前（練習）本番の期間が決まるとこの数字は使わない";
+    stats.textContent = `練習 ${bits}`;
+    return;
+  }
+  const label = m.status === "ended" ? "終了" : m.status === "live" ? "開催中" : "開始前";
+  phase.textContent = `${label} ${m.start}〜${m.end}（JST）この期間だけ`;
+  stats.textContent = play >= 7 ? `${bits} 七日` : bits;
+}
+
+async function refreshNanMeta() {
+  try {
+    const res = await fetch(`${KATSUDO_API}/v1/nan`, { headers: { Accept: "application/json" } });
+    const data = await res.json();
+    if (data && data.ok) nanMeta = data;
+  } catch {
+    /* keep last */
+  }
+  paintNanMine();
+  return nanMeta;
+}
+
 async function loadNan() {
   const list = $("[data-ba-list]");
   const empty = $("[data-ba-empty]");
   const phase = $("[data-nan-phase]");
+  await refreshNanMeta();
+  const data = nanMeta;
   try {
-    const res = await fetch(`${KATSUDO_API}/v1/nan`, { headers: { Accept: "application/json" } });
-    const data = await res.json();
     if (phase) {
       const st = data && data.status;
-      if (st === "live") phase.textContent = `開催中 ${data.start}〜${data.end}（JST）`;
-      else if (st === "ended") phase.textContent = `終了 ${data.start}〜${data.end}（JST）`;
-      else if (data && data.practice) phase.textContent = "開始前。下は練習（直近7日）";
+      if (data && data.start && st === "live") phase.textContent = `開催中 ${data.start}〜${data.end}（JST）この期間だけ`;
+      else if (data && data.start && st === "ended") phase.textContent = `終了 ${data.start}〜${data.end}（JST）この期間だけ。後は数えない`;
+      else if (data && data.start && st === "soon") phase.textContent = `開始前 ${data.start}〜${data.end}（JST）この期間だけ`;
+      else if (data && data.practice) phase.textContent = "開始前。下は練習（直近7日）。本番では使わない";
       else phase.textContent = "開始前。ルールを読んでつなぐ";
     }
     const rows = data && Array.isArray(data.rows) ? data.rows : [];
     if (list) list.innerHTML = rows.map(nanRow).join("");
     if (empty) {
-      empty.textContent = "まだ誰も走っていない";
+      if (data && data.start && data.status === "soon") empty.textContent = "この期間はまだ始まっていない";
+      else if (data && data.practice) empty.textContent = "練習。まだ誰も走っていない";
+      else if (data && data.status === "ended") empty.textContent = "この期間に走った人はいない";
+      else empty.textContent = "この期間はまだ誰も走っていない";
       empty.classList.toggle("hidden", rows.length > 0);
     }
   } catch {
