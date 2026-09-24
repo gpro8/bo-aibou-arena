@@ -1,4 +1,4 @@
-const VERSION = "0.4.73";
+const VERSION = "0.4.74";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -153,7 +153,10 @@ function show(name) {
     refreshNanMeta();
     if (loadKatsudoSes()) pullKatsudo();
   }
-  if (name === "ba") loadBoard();
+  if (name === "ba") {
+    flushTodayStamps();
+    loadBoard();
+  }
   if (name === "play") {
     ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
@@ -645,6 +648,7 @@ async function pullKatsudo() {
         version: VERSION,
       }),
     });
+    flushTodayStamps();
   }
   paintKatsudo();
 }
@@ -750,16 +754,29 @@ function noteTold() {
   const o = loadKatsudo();
   const day = jstDay();
   const fresh = !(o.told || []).includes(day);
-  if (!fresh) return false;
-  o.told = cleanDays([...(o.told || []), day]);
-  saveKatsudo(o);
+  if (fresh) {
+    o.told = cleanDays([...(o.told || []), day]);
+    saveKatsudo(o);
+    const n = o.told.length;
+    const honor = toldHonor(n);
+    showToast(n === 3 || n === 7 || n === 30 ? honor : "語った");
+    paintKatsudo();
+  }
   serverStamp(["told"]);
-  pushKatsudo(o);
-  const n = o.told.length;
-  const honor = toldHonor(n);
-  showToast(n === 3 || n === 7 || n === 30 ? honor : "語った");
-  paintKatsudo();
-  return true;
+  if (fresh) pushKatsudo(o);
+  return fresh;
+}
+
+function flushTodayStamps() {
+  if (!loadKatsudoSes()) return;
+  const o = loadKatsudo();
+  const day = jstDay();
+  const kinds = [];
+  if ((o.days || []).includes(day)) kinds.push("play");
+  if ((o.easy || []).includes(day)) kinds.push("easy");
+  if ((o.hard || []).includes(day)) kinds.push("hard");
+  if ((o.told || []).includes(day)) kinds.push("told");
+  if (kinds.length) serverStamp(kinds);
 }
 
 let toastTimer = 0;
@@ -1269,10 +1286,18 @@ function raiseCopy() {
     raiseMsg("コピーできない。保存して添付");
     return;
   }
+  const img = pack.blob;
+  const txt = new Blob([pack.text], { type: "text/plain" });
+  const done = (s) => raiseMsg(s);
   navigator.clipboard
-    .write([new ClipboardItem({ "image/png": pack.blob })])
-    .then(() => raiseMsg("コピーした。𝕏に貼る"))
-    .catch(() => raiseMsg("コピーできない。保存して添付"));
+    .write([new ClipboardItem({ "image/png": img, "text/plain": txt })])
+    .then(() => done("コピーした。𝕏に貼る"))
+    .catch(() =>
+      navigator.clipboard
+        .write([new ClipboardItem({ "image/png": img })])
+        .then(() => done("画像をコピーした。文は𝕏の投稿欄"))
+        .catch(() => done("コピーできない。保存して添付"))
+    );
 }
 
 function raiseSave() {
