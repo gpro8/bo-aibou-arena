@@ -1,4 +1,4 @@
-const VERSION = "0.4.70";
+const VERSION = "0.4.71";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -457,7 +457,7 @@ function seenNames(stems) {
 }
 
 function emptyKatsudo() {
-  return { v: 1, hardClears: 0, days: [], seen: [], told: [], title: "" };
+  return { v: 1, hardClears: 0, days: [], easy: [], hard: [], seen: [], told: [], title: "" };
 }
 
 function copyKatsudo(o) {
@@ -465,6 +465,8 @@ function copyKatsudo(o) {
     v: 1,
     hardClears: Math.max(0, Math.min(99999, Number(o.hardClears) || 0)),
     days: cleanDays(o.days),
+    easy: cleanDays(o.easy),
+    hard: cleanDays(o.hard),
     seen: cleanSeen(o.seen),
     told: cleanDays(o.told),
     title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
@@ -493,6 +495,8 @@ function loadKatsudo() {
     v: 1,
     hardClears: Math.max(katsudoMem.hardClears, disk.hardClears),
     days: cleanDays([...(katsudoMem.days || []), ...(disk.days || [])]),
+    easy: cleanDays([...(katsudoMem.easy || []), ...(disk.easy || [])]),
+    hard: cleanDays([...(katsudoMem.hard || []), ...(disk.hard || [])]),
     seen: cleanSeen([...(katsudoMem.seen || []), ...(disk.seen || [])]),
     told: cleanDays([...(katsudoMem.told || []), ...(disk.told || [])]),
     title:
@@ -509,6 +513,8 @@ function saveKatsudo(o) {
   if (katsudoMem) {
     next.hardClears = Math.max(next.hardClears, katsudoMem.hardClears);
     next.days = cleanDays([...(katsudoMem.days || []), ...(next.days || [])]);
+    next.easy = cleanDays([...(katsudoMem.easy || []), ...(next.easy || [])]);
+    next.hard = cleanDays([...(katsudoMem.hard || []), ...(next.hard || [])]);
     next.seen = cleanSeen([...(katsudoMem.seen || []), ...(next.seen || [])]);
     next.told = cleanDays([...(katsudoMem.told || []), ...(next.told || [])]);
     if (katsudoMem.title === "kitsui-nobiru") next.title = "kitsui-nobiru";
@@ -602,11 +608,13 @@ function mergeKatsudoRemote(remote) {
   const days = [...new Set([...local.days, ...(Array.isArray(remote.days) ? remote.days : [])])]
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort();
+  const easy = cleanDays([...(local.easy || []), ...(Array.isArray(remote.easy) ? remote.easy : [])]);
+  const hard = cleanDays([...(local.hard || []), ...(Array.isArray(remote.hard) ? remote.hard : [])]);
   const hardClears = Math.max(local.hardClears, Math.max(0, Number(remote.hardClears) || 0));
   const seen = cleanSeen([...(local.seen || []), ...(Array.isArray(remote.seen) ? remote.seen : [])]);
   const told = cleanDays([...(local.told || []), ...(Array.isArray(remote.told) ? remote.told : [])]);
   const title = local.title === "kitsui-nobiru" || remote.title === "kitsui-nobiru" ? "kitsui-nobiru" : "";
-  const next = { v: 1, days: days.slice(-400), hardClears, seen, told, title };
+  const next = { v: 1, days: days.slice(-400), easy, hard, hardClears, seen, told, title };
   saveKatsudo(next);
   return next;
 }
@@ -689,19 +697,28 @@ function serverStamp(kinds) {
   katsudoFetch("/v1/stamp", {
     method: "POST",
     body: JSON.stringify({ kinds: list, version: VERSION }),
-  }).catch(() => {});
+  })
+    .then((got) => {
+      if (got.ok && got.data) mergeKatsudoRemote(got.data);
+      paintNanMine();
+    })
+    .catch(() => {});
 }
 
-function stampPlayDay() {
+function stampPlayDay(modeId) {
   const o = loadKatsudo();
   const day = jstDay();
+  const id = modeId || (state.mode && state.mode.id) || "";
   const freshDay = !o.days.includes(day);
   if (freshDay) o.days.push(day);
   if (o.days.length > 400) o.days = o.days.slice(-400);
+  const kinds = ["play"];
+  if (id === "easy") {
+    if (!(o.easy || []).includes(day)) o.easy = cleanDays([...(o.easy || []), day]);
+    kinds.push("easy");
+  }
   o.v = 1;
   saveKatsudo(o);
-  const kinds = ["play"];
-  if (state.mode && state.mode.id === "easy") kinds.push("easy");
   serverStamp(kinds);
   pushKatsudo(o);
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length };
@@ -713,6 +730,7 @@ function stampHardWin() {
   const freshDay = !o.days.includes(day);
   if (freshDay) o.days.push(day);
   if (o.days.length > 400) o.days = o.days.slice(-400);
+  if (!(o.hard || []).includes(day)) o.hard = cleanDays([...(o.hard || []), day]);
   o.hardClears += 1;
   o.title = "kitsui-nobiru";
   o.v = 1;
@@ -925,23 +943,24 @@ function inWinCount(list, win) {
   return (Array.isArray(list) ? list : []).filter((d) => set.has(d)).length;
 }
 
+function nanWindow() {
+  if (nanMeta && Array.isArray(nanMeta.window) && nanMeta.window.length) return nanMeta.window;
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => shiftDay(jstDay(), -i));
+}
+
 function paintNanMine() {
   const phase = $("[data-nan-mine-phase]");
   const stats = $("[data-nan-mine-stats]");
   if (!phase || !stats) return;
   const o = loadKatsudo();
   const m = nanMeta;
-  if (!m || !m.ok) {
-    phase.textContent = "期間が決まるとここに出る";
-    stats.textContent = "";
-    return;
-  }
-  const play = inWinCount(o.days, m.window);
-  const hard = inWinCount(o.hard, m.window);
-  const easy = inWinCount(o.easy, m.window);
-  const told = inWinCount(o.told, m.window);
+  const win = nanWindow();
+  const play = inWinCount(o.days, win);
+  const hard = inWinCount(o.hard, win);
+  const easy = inWinCount(o.easy, win);
+  const told = inWinCount(o.told, win);
   const bits = `走${play} 語${told} きつい${hard} ふつう${easy}`;
-  if (m.practice || !m.start) {
+  if (!m || !m.ok || m.practice || !m.start) {
     phase.textContent = "開始前（練習）本番の期間が決まるとこの数字は使わない";
     stats.textContent = `練習 ${bits}`;
     return;
@@ -2293,7 +2312,7 @@ function bootArena() {
         }
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
-      const played = stampPlayDay();
+      const played = stampPlayDay(mode.id);
       let stamped = null;
       if (win && hard) stamped = stampHardWin();
       state.last = {
