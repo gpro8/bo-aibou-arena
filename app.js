@@ -1,4 +1,4 @@
-const VERSION = "0.4.75";
+const VERSION = "0.4.76";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1601,12 +1601,12 @@ function bootArena() {
         if (hud.buff) hud.buff.textContent = `${top.n} ${Math.ceil(top.t / 1000)}`;
         if (bbar && this.buffMax) bbar.style.width = `${Math.max(0, Math.min(100, (top.t / this.buffMax) * 100))}%`;
       } else if (hud.buff) hud.buff.textContent = "";
-      hud.skill.textContent = k.skill;
+      hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
       hud.time.textContent = `${t}秒`;
     }
     liveScore(win) {
-      const clear = win ? (mode.id === "hard" ? 50 : 25) : 0;
+      const clear = win ? (mode.id === "hard" ? 100 : 25) : 0;
       return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
     }
     hajikiFoe(f) {
@@ -2415,7 +2415,7 @@ function bootArena() {
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
           this.spawn("boss");
-          this.callout("影の親玉");
+          this.callout("Moogre");
           this.cameras.main.shake(220, 0.012);
           buzz([30, 40, 90]);
         }

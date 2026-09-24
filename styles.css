@@ -516,6 +516,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   border: 1px solid rgba(248, 181, 0, 0.4);
   border-radius: 999px;
   padding: 3px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 #hud .hpchip {
   display: inline-flex;
@@ -712,9 +714,11 @@ html:-webkit-full-screen #toast-ov,
 html:-webkit-full-screen #toast-ov * {
   cursor: auto;
 }
-@media (min-width: 720px) {
-  #hud { font-size: 13px; }
-  .hpbar { width: 72px; }
+@media (max-width: 900px), (max-height: 500px) {
+  #hud { font-size: 10px; gap: 3px 4px; }
+  #hud > span,
+  #hud .hpchip { padding: 2px 6px; }
+  .hpbar { width: 56px; flex: 0 0 56px; }
 }
 @media (orientation: landscape) and (max-height: 480px) {
   #result-ov {
