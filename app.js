@@ -1,4 +1,4 @@
-const VERSION = "0.4.74";
+const VERSION = "0.4.75";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -25,6 +25,7 @@ const FOE_NAMES = {
 
 const MODES = [
   { id: "easy", label: "ふつう", secs: 120, pace: 1 },
+  { id: "long", label: "ながい", secs: 180, pace: 1 },
   { id: "hard", label: "きつい", secs: 80, pace: 1.35 },
 ];
 const STAGES = [
@@ -1067,7 +1068,8 @@ async function postBa() {
     showToast("つなぐと順位表に載せる");
     return;
   }
-  const mode = run.mode === "easy" ? "easy" : "hard";
+  const mode = run.mode === "easy" ? "easy" : run.mode === "long" ? "long" : run.mode === "hard" ? "hard" : "";
+  if (!mode) return;
   const got = await katsudoFetch("/v1/ba", {
     method: "POST",
     body: JSON.stringify({ mode, score: run.score, version: VERSION }),
@@ -2842,7 +2844,7 @@ function bindUi() {
     }
     const baChip = hit(ev, "[data-ba-mode]");
     if (baChip) {
-      baMode = baChip.dataset.baMode === "easy" ? "easy" : "hard";
+      baMode = baChip.dataset.baMode === "easy" || baChip.dataset.baMode === "long" ? baChip.dataset.baMode : "hard";
       baTab = "ba";
       loadBoard();
       return;
@@ -2863,7 +2865,7 @@ function bindUi() {
     }
     const mode = hit(ev, "[data-mode]");
     if (mode) {
-      state.mode = MODES.find((m) => m.id === mode.dataset.mode);
+      state.mode = MODES.find((m) => m.id === mode.dataset.mode) || state.mode;
       renderSetup();
       return;
     }

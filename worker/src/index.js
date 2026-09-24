@@ -165,7 +165,7 @@ async function publicMe(env, uid, rec) {
 }
 
 function cleanMode(m) {
-  return m === "hard" ? "hard" : m === "easy" ? "easy" : "";
+  return m === "hard" ? "hard" : m === "easy" ? "easy" : m === "long" ? "long" : "";
 }
 
 const BA_CAP = 50;

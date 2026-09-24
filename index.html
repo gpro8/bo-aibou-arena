@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.74">
+  <link rel="stylesheet" href="styles.css?v=0.4.75">
 </head>
 <body>
   <div id="app">
@@ -73,14 +73,14 @@
         <li>敵は妖怪の影。時間で職が変わる（小 塵坊→厚 ぬっぺ→剛 唐傘→飛び カマイッタ→返り 狐火→吸い場 吸い子）。親玉は牛鬼</li>
         <li>桐箱：吸い込み（拾い） / はやて（特技が速い） / 守（虹の輪。弾き。心は減らない）</li>
         <li>親玉の心が半分で半血。突の白い線は予告。走り出したら消える。直撃は大きい。親玉は弾かれない・吸い場にも吸われない。倒すと一息（虹の輪・弾き）</li>
-        <li>速さはふつう / きついだけ。lvでは速くならない。終盤は敵が強い</li>
-        <li>場の陰/陽は画面の色。走るたびに日の印（ふつうでも）。連続すると明日が楽しみ。きついを生き延びたら記録にボーナス（+50）と称号。会った敵の種類は敵図鑑で姿がわかる。𝕏で話すと語った（勝敗・難易度を問わない）</li>
+        <li>速さはふつう / ながい / きつい。ながいは180秒でふつうの速さ。lvでは速くならない。終盤は敵が強い</li>
+        <li>場の陰/陽は画面の色。走るたびに日の印（ながいでも）。連続すると明日が楽しみ。きついを生き延びたら記録にボーナス（+50）と称号。会った敵の種類は敵図鑑で姿がわかる（きつい）。𝕏で話すと語った（勝敗・難易度を問わない）</li>
         <li>連5で画面の縁が脈打つ。かわしは敵に当たる寸前。HUD（上のステータス）に記録が表示される。被弾でかわしは途切れる</li>
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
         <li>新記録のときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
-        <li>七日の走：活動記録でつなぐ。この期間だけ（前も後も数えない）。期間中7日走ると参加。順は語った→きつい→ふつう。記録点は使わない。入場・参加無料。詳しくは順位表</li>
+        <li>七日の走：活動記録でつなぐ。この期間だけ（前も後も数えない）。期間中7日走ると参加。順は語った→きつい→ふつう→走った。ながいは走った。記録点は使わない。入場・参加無料。詳しくは順位表</li>
       </ul>
       <div class="row">
         <button type="button" class="btn gold" data-go="title">もどる</button>
@@ -155,6 +155,7 @@
       </ul>
       <div class="chips" data-ba-modes>
         <button type="button" class="chip" data-ba-mode="easy">ふつう</button>
+        <button type="button" class="chip" data-ba-mode="long">ながい</button>
         <button type="button" class="chip on" data-ba-mode="hard">きつい</button>
       </div>
       <ol class="ba-list" data-ba-list></ol>
@@ -267,6 +268,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.74"></script>
+  <script src="app.js?v=0.4.75"></script>
 </body>
 </html>
