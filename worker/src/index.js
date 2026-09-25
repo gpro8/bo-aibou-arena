@@ -98,10 +98,19 @@ function bestTitle(a, b) {
   return titleRank(a) >= titleRank(b) ? a || "" : b || "";
 }
 
+function bestMs(a, b) {
+  const x = Math.max(0, Math.min(9999999, Number(a) || 0));
+  const y = Math.max(0, Math.min(9999999, Number(b) || 0));
+  if (!x) return y;
+  if (!y) return x;
+  return Math.min(x, y);
+}
+
 function cleanRecord(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
   const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
   const raidKills = Math.max(0, Math.min(99999, Number(o.raidKills) || 0));
+  const raidBestMs = Math.max(0, Math.min(9999999, Number(o.raidBestMs) || 0));
   let title = bestTitle(o.title, raidKills >= 3 ? "sansho" : raidKills >= 1 ? "sanseru" : "");
   if (!title && hardClears > 0) title = "kitsui-nobiru";
   return {
@@ -113,6 +122,7 @@ function cleanRecord(raw) {
     told: cleanDays(o.told),
     hardClears,
     raidKills,
+    raidBestMs,
     title,
   };
 }
@@ -129,6 +139,7 @@ function publicRecord(rec) {
     told: r.told,
     hardClears: r.hardClears,
     raidKills: r.raidKills,
+    raidBestMs: r.raidBestMs,
     title: r.title,
     dayCount: r.days.length,
   };
@@ -316,6 +327,7 @@ async function handleSync(env, request) {
   const rec = await loadUser(env, ses.uid);
   rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
   rec.raidKills = Math.max(rec.raidKills || 0, incoming.raidKills || 0);
+  rec.raidBestMs = bestMs(rec.raidBestMs, incoming.raidBestMs);
   rec.title = bestTitle(rec.title, incoming.title);
   await saveUser(env, ses.uid, rec);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
@@ -360,6 +372,7 @@ async function handleStamp(env, request) {
   rec.seen = cleanSeen([...(latest.seen || []), ...(rec.seen || [])]);
   rec.hardClears = Math.max(latest.hardClears, rec.hardClears);
   rec.raidKills = Math.max(latest.raidKills || 0, rec.raidKills || 0);
+  rec.raidBestMs = bestMs(latest.raidBestMs, rec.raidBestMs);
   rec.title = bestTitle(latest.title, rec.title);
   await saveUser(env, ses.uid, rec);
   await rememberNan(env, ses.uid);

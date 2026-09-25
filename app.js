@@ -1,4 +1,4 @@
-const VERSION = "0.4.78";
+const VERSION = "0.4.79";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -22,7 +22,7 @@ const FOE_NAMES = {
   rebound: { stem: "kitsunebi", jp: "狐火", en: "Kitsunebi" },
   well: { stem: "suiko", jp: "吸い子", en: "Suiko" },
   boss: { stem: "gyuki", jp: "牛鬼", en: "Moogre" },
-  king: { stem: "moogredon", jp: "総親玉", en: "Moogredon" },
+  king: { stem: "moogredon", jp: "大妖怪", en: "Moogredon" },
 };
 
 const MODES = [
@@ -46,9 +46,16 @@ function bestTitle(a, b) {
   const y = TITLE_RANK[b] != null ? b : "";
   return (TITLE_RANK[x] || 0) >= (TITLE_RANK[y] || 0) ? x : y;
 }
+function bestMs(a, b) {
+  const x = Math.max(0, Math.min(9999999, Number(a) || 0));
+  const y = Math.max(0, Math.min(9999999, Number(b) || 0));
+  if (!x) return y;
+  if (!y) return x;
+  return Math.min(x, y);
+}
 function titleJp(t) {
-  if (t === "sansho") return "総親玉を称賛";
-  if (t === "sanseru") return "総親玉を讃える";
+  if (t === "sansho") return "大妖怪撃退を称賛";
+  if (t === "sanseru") return "大妖怪撃退を讃える";
   if (t === "kitsui-nobiru") return "きついを生き延びた";
   return "まだ";
 }
@@ -477,7 +484,7 @@ function seenNames(stems) {
 }
 
 function emptyKatsudo() {
-  return { v: 1, hardClears: 0, raidKills: 0, days: [], easy: [], hard: [], seen: [], told: [], title: "" };
+  return { v: 1, hardClears: 0, raidKills: 0, raidBestMs: 0, days: [], easy: [], hard: [], seen: [], told: [], title: "" };
 }
 
 function copyKatsudo(o) {
@@ -485,6 +492,7 @@ function copyKatsudo(o) {
     v: 1,
     hardClears: Math.max(0, Math.min(99999, Number(o.hardClears) || 0)),
     raidKills: Math.max(0, Math.min(99999, Number(o.raidKills) || 0)),
+    raidBestMs: Math.max(0, Math.min(9999999, Number(o.raidBestMs) || 0)),
     days: cleanDays(o.days),
     easy: cleanDays(o.easy),
     hard: cleanDays(o.hard),
@@ -516,6 +524,7 @@ function loadKatsudo() {
     v: 1,
     hardClears: Math.max(katsudoMem.hardClears, disk.hardClears),
     raidKills: Math.max(katsudoMem.raidKills || 0, disk.raidKills || 0),
+    raidBestMs: bestMs(katsudoMem.raidBestMs, disk.raidBestMs),
     days: cleanDays([...(katsudoMem.days || []), ...(disk.days || [])]),
     easy: cleanDays([...(katsudoMem.easy || []), ...(disk.easy || [])]),
     hard: cleanDays([...(katsudoMem.hard || []), ...(disk.hard || [])]),
@@ -532,6 +541,7 @@ function saveKatsudo(o) {
   if (katsudoMem) {
     next.hardClears = Math.max(next.hardClears, katsudoMem.hardClears);
     next.raidKills = Math.max(next.raidKills || 0, katsudoMem.raidKills || 0);
+    next.raidBestMs = bestMs(next.raidBestMs, katsudoMem.raidBestMs);
     next.days = cleanDays([...(katsudoMem.days || []), ...(next.days || [])]);
     next.easy = cleanDays([...(katsudoMem.easy || []), ...(next.easy || [])]);
     next.hard = cleanDays([...(katsudoMem.hard || []), ...(next.hard || [])]);
@@ -555,6 +565,7 @@ function pushKatsudo(o) {
       days: o.days,
       hardClears: o.hardClears,
       raidKills: o.raidKills || 0,
+      raidBestMs: o.raidBestMs || 0,
       seen: o.seen,
       told: o.told,
       title: o.title,
@@ -633,10 +644,11 @@ function mergeKatsudoRemote(remote) {
   const hard = cleanDays([...(local.hard || []), ...(Array.isArray(remote.hard) ? remote.hard : [])]);
   const hardClears = Math.max(local.hardClears, Math.max(0, Number(remote.hardClears) || 0));
   const raidKills = Math.max(local.raidKills || 0, Math.max(0, Number(remote.raidKills) || 0));
+  const raidBestMs = bestMs(local.raidBestMs, remote.raidBestMs);
   const seen = cleanSeen([...(local.seen || []), ...(Array.isArray(remote.seen) ? remote.seen : [])]);
   const told = cleanDays([...(local.told || []), ...(Array.isArray(remote.told) ? remote.told : [])]);
   const title = bestTitle(local.title, remote.title);
-  const next = { v: 1, days: days.slice(-400), easy, hard, hardClears, raidKills, seen, told, title };
+  const next = { v: 1, days: days.slice(-400), easy, hard, hardClears, raidKills, raidBestMs, seen, told, title };
   saveKatsudo(next);
   return next;
 }
@@ -662,6 +674,7 @@ async function pullKatsudo() {
         days: local.days,
         hardClears: local.hardClears,
         raidKills: local.raidKills || 0,
+        raidBestMs: local.raidBestMs || 0,
         seen: local.seen,
         told: local.told,
         title: local.title,
@@ -769,9 +782,10 @@ function stampHardWin() {
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length, hardClears: o.hardClears };
 }
 
-function stampRaidKill() {
+function stampRaidKill(ms) {
   const o = loadKatsudo();
   o.raidKills = Math.min(99999, (o.raidKills || 0) + 1);
+  o.raidBestMs = bestMs(o.raidBestMs, ms);
   o.title = bestTitle(o.title, o.raidKills >= 3 ? "sansho" : "sanseru");
   o.v = 1;
   saveKatsudo(o);
@@ -881,6 +895,17 @@ function paintKatsudo() {
     clears.textContent = `きついクリア ${o.hardClears}回`;
     clears.classList.toggle("thanks", o.hardClears > 0);
     clears.classList.toggle("hint", o.hardClears === 0);
+  }
+  const raidEl = $("[data-katsudo-raid]");
+  if (raidEl) {
+    const n = o.raidKills || 0;
+    const best = o.raidBestMs || 0;
+    const sec = best ? Math.max(1, Math.round(best / 1000)) : 0;
+    raidEl.textContent = n
+      ? `大妖怪撃退 ${n}回${sec ? ` · 最速 ${sec}秒` : ""}`
+      : "大妖怪撃退 まだ";
+    raidEl.classList.toggle("thanks", n > 0);
+    raidEl.classList.toggle("hint", n === 0);
   }
   const seenEl = $("[data-katsudo-seen]");
   if (seenEl) {
@@ -1536,6 +1561,11 @@ function bootArena() {
       this.raidWin = false;
       this.raidFail = false;
       this.raidDown = 0;
+      this.raidAt = 0;
+      this.raidMs = 0;
+      this.raidChests = 0;
+      this.powerUntil = 0;
+      this.clockPlayed = null;
       this.surviveLocked = false;
       this.hardStamped = false;
       this.hitStop = 0;
@@ -1629,6 +1659,7 @@ function bootArena() {
         { k: "pull", t: leftP, n: "吸い込み" },
         { k: "fast", t: leftF, n: "はやて" },
         { k: "ward", t: leftW, n: "守" },
+        { k: "power", t: (this.powerUntil || 0) - tnow, n: "力" },
       ].filter((b) => b.t > 0);
       bits.sort((a, b) => b.t - a.t);
       const top = bits[0];
@@ -1639,7 +1670,7 @@ function bootArena() {
       } else if (hud.buff) hud.buff.textContent = "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
-      hud.time.textContent = this.raid ? "親玉" : `${t}秒`;
+      hud.time.textContent = this.raid ? "大妖怪" : `${t}秒`;
     }
     liveScore(win) {
       const clear = win ? (mode.id === "hard" ? 100 : 25) : 0;
@@ -1696,7 +1727,7 @@ function bootArena() {
       });
     }
     skillDmg() {
-      return k.dmg + (this.lv - 1) * 2;
+      return k.dmg + (this.lv - 1) * 2 + (this.time && this.time.now < (this.powerUntil || 0) ? 3 : 0);
     }
     skillReach() {
       const t = this.lv >= 9 ? 3 : this.lv >= 6 ? 2 : this.lv >= 3 ? 1 : 0;
@@ -1796,10 +1827,11 @@ function bootArena() {
       return Math.random() < 0.45 ? "well" : Math.random() < 0.5 ? "rebound" : "fly";
     }
     spawn(kind) {
-      const boss = kind === "boss";
+      const king = kind === "king";
+      const boss = kind === "boss" || king;
       if (!boss && this.raid) return;
       if (!boss && this.foes.countActive(true) >= 16) return;
-      let job = boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
+      let job = king ? "king" : boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
       if (!boss && job === "well") {
         let hasWell = false;
         this.foes.children.iterate((f) => {
@@ -1829,10 +1861,10 @@ function bootArena() {
       foe.setDepth(4);
       foe.art = art;
       if (art) {
-        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.20 : job === "boss" ? 1.04 : 0.36;
+        const sc = job === "small" ? 0.26 : job === "thick" ? 0.34 : job === "brute" ? 0.4 : job === "well" ? 0.36 : job === "rebound" ? 0.20 : job === "king" ? 1.2 : job === "boss" ? 1.04 : 0.36;
         foe.setScale(sc);
         foe.baseScale = sc;
-        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : job === "boss" ? 72 : job === "rebound" ? 18 : 26;
+        const rad = job === "small" ? 22 : job === "thick" ? 28 : job === "brute" ? 28 : job === "well" ? 28 : job === "king" ? 80 : job === "boss" ? 72 : job === "rebound" ? 18 : 26;
         foe.body.setCircle(rad, 80 - rad, 80 - rad);
         if (job === "well") foe.setFrame(0);
         else foe.play(`${artKey}-run`);
@@ -1840,7 +1872,8 @@ function bootArena() {
         foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
       }
       const late = this.left <= 15 ? 1.5 : 1;
-      if (boss) foe.hp = 460 + this.lv * 24;
+      if (king) foe.hp = 540 + this.lv * 28;
+      else if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
       else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
       else if (job === "fly" || job === "rebound") foe.hp = Math.ceil((16 + (this.lv - 1) * 2) * late);
@@ -1848,6 +1881,7 @@ function bootArena() {
       else foe.hp = Math.ceil((24 + (this.lv - 1) * 2) * late);
       foe.maxHp = foe.hp;
       foe.boss = boss;
+      foe.king = king;
       foe.job = job;
       if (!this.seenJobs) this.seenJobs = new Set();
       if (mode.id === "hard") {
@@ -1857,7 +1891,7 @@ function bootArena() {
           markSeenLocal(stem);
         }
       }
-      foe.spd = (boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
+      foe.spd = (king ? 88 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
       foe.wind = 0;
       foe.lunge = 0;
@@ -1946,8 +1980,13 @@ function bootArena() {
       this.gems.add(gem);
     }
     spawnChest() {
-      if (this.chestsOpened >= 3) return;
-      if (this.chests.countActive(true) > 0) return;
+      if (this.raid) {
+        if ((this.raidChests || 0) >= 5) return;
+        if (this.chests.countActive(true) > 0) return;
+      } else {
+        if (this.chestsOpened >= 3) return;
+        if (this.chests.countActive(true) > 0) return;
+      }
       const w = this.scale.width;
       const h = this.scale.height;
       const x = Phaser.Math.Between(80, w - 80);
@@ -1964,7 +2003,8 @@ function bootArena() {
         ease: "Sine.easeInOut",
       });
       this.chests.add(box);
-      this.callout("桐箱");
+      if (this.raid) this.raidChests = (this.raidChests || 0) + 1;
+      this.callout(this.raid ? "力" : "桐箱");
     }
     openChest(box) {
       if (!box || !box.active) return;
@@ -1980,6 +2020,17 @@ function bootArena() {
       }
       this.gotBuffs.push(pick);
       this.lastBuff = pick;
+      if (this.raid) {
+        const dur = 12000;
+        this.buffMax = dur;
+        this.powerUntil = this.time.now + dur;
+        this.maxHp += 2;
+        this.hp = Math.min(this.maxHp, this.hp + 10);
+        this.healWhy = "力";
+        this.callout("力");
+        this.pop(this.player.x, this.player.y - 24, "力 +10");
+        return;
+      }
       if (pick === "pull") {
         const dur = 22000;
         this.buffMax = dur;
@@ -2168,6 +2219,7 @@ function bootArena() {
           if (king) {
             this.raidDown = 1;
             this.raidWin = true;
+            this.raidMs = Math.max(1, this.time.now - (this.raidAt || this.time.now));
           }
           this.dropGem(x - 16, y);
           this.dropGem(x + 16, y);
@@ -2358,7 +2410,7 @@ function bootArena() {
     die() {
       if (this.raid) {
         this.raidFail = true;
-        this.finish(true);
+        this.finish(false);
         return;
       }
       this.finish(false);
@@ -2392,12 +2444,12 @@ function bootArena() {
         }
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
-      const survived = Boolean(win || this.surviveLocked);
+      const survived = Boolean(win);
       const stampedHard = Boolean(survived && hard && !this.hardStamped);
       if (stampedHard) this.hardStamped = true;
-      const played = stampedHard ? stampHardWin() : stampPlayDay(mode.id);
+      const played = this.clockPlayed || (stampedHard ? stampHardWin() : stampPlayDay(mode.id));
       if (this.raidWin) {
-        const o = stampRaidKill();
+        const o = stampRaidKill(this.raidMs);
         showToast(o.raidKills >= 3 ? "称賛" : "讃える");
       }
       state.last = {
@@ -2415,21 +2467,22 @@ function bootArena() {
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = survived ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = this.raidWin
-        ? "総親玉を倒した"
+        ? "大妖怪を倒した"
         : this.raidFail
-          ? "親玉にやられた"
+          ? "大妖怪にやられた"
           : win
             ? "おめでとうございます"
             : "まだいける。もういちど";
       const raiseBtn = $("[data-raise]");
       if (raiseBtn) raiseBtn.textContent = rec ? "𝕏でドヤる" : "𝕏でシェアする";
-      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
+      const raidSec = this.raidWin && this.raidMs ? ` · 撃退 ${Math.max(1, Math.round(this.raidMs / 1000))}秒` : "";
+      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}${raidSec}`;
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
       if (kEl) {
         const o = loadKatsudo();
         const st = played.streak;
-        kEl.textContent = `連続 ${st}日 · 走った日 ${o.days.length}日${stampedHard ? ` · きついクリア ${o.hardClears}回` : ""}`;
+        kEl.textContent = `連続 ${st}日 · 走った日 ${o.days.length}日${this.hardStamped || stampedHard ? ` · きついクリア ${o.hardClears}回` : ""}`;
         kEl.classList.remove("hidden");
         if (played.freshDay) showToast(st >= 3 ? streakHonor(st) || "日の印" : "日の印");
       }
@@ -2461,36 +2514,17 @@ function bootArena() {
     }
     beginRaid() {
       this.raid = true;
-      this.surviveLocked = true;
-      if (!this.hardStamped) {
-        stampHardWin();
-        this.hardStamped = true;
-      }
-      let boss = null;
-      this.foes.children.iterate((f) => {
-        if (f && f.active && f.boss) boss = f;
+      this.raidAt = this.time.now;
+      this.raidChests = 0;
+      this.chestAcc = 0;
+      this.clearDashLane();
+      (this.foes.getChildren ? this.foes.getChildren() : []).slice().forEach((f) => {
+        if (f && f.active) f.destroy();
       });
-      if (!boss) return;
-      boss.king = true;
-      boss.wind = 0;
-      boss.lunge = 0;
-      boss.dashCd = 400;
-      const extra = 340 + this.lv * 20;
-      boss.hp = Math.max(1, boss.hp) + extra;
-      boss.maxHp = boss.hp;
-      boss.raged = false;
-      boss.spd = 92 * mode.pace;
-      if (this.textures.exists("foe-king")) {
-        boss.setTexture("foe-king");
-        if (this.anims && this.anims.exists && this.anims.exists("foe-king-run")) boss.play("foe-king-run");
-        boss.setScale(1.2);
-        boss.baseScale = 1.2;
-        const rad = 80;
-        if (boss.body) boss.body.setCircle(rad, 80 - rad, 80 - rad);
-      }
-      if (!this.seenJobs) this.seenJobs = new Set();
-      this.seenJobs.add("moogredon");
-      markSeenLocal("moogredon");
+      (this.bolts.getChildren ? this.bolts.getChildren() : []).slice().forEach((b) => {
+        if (b && b.active) b.destroy();
+      });
+      this.spawn("king");
       const lab = $(".bosslabel");
       if (lab) lab.textContent = "Moogredon";
       const av = $(".bossava");
@@ -2502,9 +2536,10 @@ function bootArena() {
         if (hp) hp.style.width = "100%";
       }
       paintBossLabel();
-      this.callout("総親玉");
+      this.callout("大妖怪");
       if (this.cameras && this.cameras.main) this.cameras.main.shake(260, 0.014);
       buzz([30, 40, 90, 40, 90]);
+      this.spawnChest();
     }
     update(_t, delta) {
       if (this.ended) return;
@@ -2522,22 +2557,7 @@ function bootArena() {
         if (!this.raid) this.left -= 1;
         this.waveAcc += 1;
         this.pace = mode.pace;
-        if (!this.raid && this.left === 15) {
-          let living = null;
-          this.foes.children.iterate((f) => {
-            if (f && f.active && f.boss) living = f;
-          });
-          if (mode.id === "hard" && living && !this.raidAsked) {
-            this.raidAsked = true;
-            this.clearDashLane();
-            living.wind = 0;
-            living.lunge = 0;
-            living.dashCd = 800;
-            this.askRaid();
-          } else {
-            this.latePush();
-          }
-        }
+        if (!this.raid && this.left === 15) this.latePush();
         if (!this.raid && this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
@@ -2557,10 +2577,27 @@ function bootArena() {
           const play = $(".play");
           if (play) play.classList.remove("combo");
         }
-        if (!this.raid && this.left <= 0) this.finish(true);
+        if (!this.raid && this.left <= 0) {
+          if (mode.id === "hard" && this.hp > 0 && !this.raidAsked) {
+            this.raidAsked = true;
+            this.clearDashLane();
+            if (!this.hardStamped) {
+              this.clockPlayed = stampHardWin();
+              this.hardStamped = true;
+            }
+            this.askRaid();
+          } else {
+            this.finish(true);
+          }
+        }
       }
       this.chestAcc += delta;
-      if (!this.raid && this.chestAcc > 12000) {
+      if (this.raid) {
+        if (this.chestAcc > 16000) {
+          this.chestAcc = 0;
+          this.spawnChest();
+        }
+      } else if (this.chestAcc > 12000) {
         this.chestAcc = 0;
         this.spawnChest();
       }
@@ -2882,10 +2919,10 @@ function acceptRaid() {
   const ov = $("#raid-ov");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
-  const sc = state.game && state.game.scene.getScene("arena");
-  if (sc && sc.beginRaid) sc.beginRaid();
   tryFullscreen();
   thawScene();
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (sc && sc.beginRaid) sc.beginRaid();
   syncPlayGate();
 }
 
@@ -2894,10 +2931,7 @@ function declineRaid() {
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
   const sc = state.game && state.game.scene.getScene("arena");
-  if (sc && sc.latePush) sc.latePush();
-  tryFullscreen();
-  thawScene();
-  syncPlayGate();
+  if (sc && sc.finish) sc.finish(true);
 }
 
 function killGame() {
