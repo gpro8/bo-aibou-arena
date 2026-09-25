@@ -668,6 +668,7 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
 #stick-ov.hidden { display: none !important; }
 #stick-ov h1 { font-size: 40px; }
 #stick-ov .row { width: min(280px, 90%); }
+#stick-ov .btn[data-stick-back] { width: min(280px, 90%); }
 #stick i {
   position: absolute;
   width: 48px;

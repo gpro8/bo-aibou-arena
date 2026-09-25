@@ -1,4 +1,4 @@
-const VERSION = "0.4.79";
+const VERSION = "0.4.80";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -3099,6 +3099,11 @@ function bindUi() {
       const ov = $("#stick-ov");
       if (ov) ov.classList.add("hidden");
       enterPlay();
+      return;
+    }
+    if (hit(ev,"[data-stick-back]")) {
+      const ov = $("#stick-ov");
+      if (ov) ov.classList.add("hidden");
       return;
     }
     if (hit(ev,"[data-pause]")) {
