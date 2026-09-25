@@ -179,22 +179,32 @@ html:-webkit-full-screen #raise-ov * {
   gap: 2px;
 }
 #bosshp .bosslabel {
-  display: block;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-align: left;
-  line-height: 1.1;
+  line-height: 1.2;
+  padding: 2px 8px;
+  border-radius: 999px;
   -webkit-text-stroke: 0;
+  background: #fff8ea;
+  color: #12100e;
+  -webkit-text-fill-color: #12100e;
+  text-shadow: none;
 }
 body.yang #bosshp .bosslabel {
-  color: #12100e !important;
-  -webkit-text-fill-color: #12100e !important;
-  text-shadow: none !important;
+  background: #fff8ea;
+  color: #12100e;
+  -webkit-text-fill-color: #12100e;
+  text-shadow: none;
 }
 body.yin #bosshp .bosslabel {
-  color: #f8b500 !important;
-  -webkit-text-fill-color: #f8b500 !important;
+  background: #1b1815;
+  color: #f8b500;
+  -webkit-text-fill-color: #f8b500;
   text-shadow: none;
 }
 #bosshp.hidden { display: none !important; }

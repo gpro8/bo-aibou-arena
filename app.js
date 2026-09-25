@@ -1,4 +1,4 @@
-const VERSION = "0.4.76";
+const VERSION = "0.4.77";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -893,7 +893,7 @@ function paintKatsudo() {
       av.classList.add("hidden");
     }
   }
-  if (nm) nm.textContent = linked && prof.name ? prof.name : "Guest player";
+  if (nm) nm.textContent = linked && prof.name ? prof.name : "ゲスト";
   if (mark) {
     mark.classList.remove("hidden");
     mark.classList.toggle("dc-mute", !linked);
@@ -2415,7 +2415,7 @@ function bootArena() {
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
           this.spawn("boss");
-          this.callout("Moogre");
+          this.callout("親玉");
           this.cameras.main.shake(220, 0.012);
           buzz([30, 40, 90]);
         }
