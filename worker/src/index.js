@@ -76,7 +76,7 @@ function cleanDays(list) {
 }
 
 function cleanSeen(list) {
-  const allow = new Set(["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki"]);
+  const allow = new Set(["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki", "moogredon"]);
   const out = [];
   const have = new Set();
   for (const s of Array.isArray(list) ? list : []) {
@@ -87,9 +87,23 @@ function cleanSeen(list) {
   return out;
 }
 
+function titleRank(t) {
+  if (t === "sansho") return 3;
+  if (t === "sanseru") return 2;
+  if (t === "kitsui-nobiru") return 1;
+  return 0;
+}
+
+function bestTitle(a, b) {
+  return titleRank(a) >= titleRank(b) ? a || "" : b || "";
+}
+
 function cleanRecord(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
   const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
+  const raidKills = Math.max(0, Math.min(99999, Number(o.raidKills) || 0));
+  let title = bestTitle(o.title, raidKills >= 3 ? "sansho" : raidKills >= 1 ? "sanseru" : "");
+  if (!title && hardClears > 0) title = "kitsui-nobiru";
   return {
     v: 1,
     days: cleanDays(o.days),
@@ -98,7 +112,8 @@ function cleanRecord(raw) {
     seen: cleanSeen(o.seen),
     told: cleanDays(o.told),
     hardClears,
-    title: o.title === "kitsui-nobiru" || hardClears > 0 ? "kitsui-nobiru" : "",
+    raidKills,
+    title,
   };
 }
 
@@ -113,6 +128,7 @@ function publicRecord(rec) {
     seen: r.seen,
     told: r.told,
     hardClears: r.hardClears,
+    raidKills: r.raidKills,
     title: r.title,
     dayCount: r.days.length,
   };
@@ -299,6 +315,8 @@ async function handleSync(env, request) {
   const incoming = cleanRecord(body);
   const rec = await loadUser(env, ses.uid);
   rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
+  rec.raidKills = Math.max(rec.raidKills || 0, incoming.raidKills || 0);
+  rec.title = bestTitle(rec.title, incoming.title);
   await saveUser(env, ses.uid, rec);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
@@ -327,7 +345,7 @@ async function handleStamp(env, request) {
   if (kinds.includes("hard") && !rec.hard.includes(today)) {
     rec.hard.push(today);
     rec.hardClears = Math.min(99999, rec.hardClears + 1);
-    rec.title = "kitsui-nobiru";
+    rec.title = bestTitle(rec.title, "kitsui-nobiru");
   }
   if (kinds.includes("told") && !rec.told.includes(today)) rec.told.push(today);
   rec.days = cleanDays(rec.days);
@@ -341,7 +359,8 @@ async function handleStamp(env, request) {
   rec.told = cleanDays([...(latest.told || []), ...(rec.told || [])]);
   rec.seen = cleanSeen([...(latest.seen || []), ...(rec.seen || [])]);
   rec.hardClears = Math.max(latest.hardClears, rec.hardClears);
-  if (latest.title === "kitsui-nobiru") rec.title = "kitsui-nobiru";
+  rec.raidKills = Math.max(latest.raidKills || 0, rec.raidKills || 0);
+  rec.title = bestTitle(latest.title, rec.title);
   await saveUser(env, ses.uid, rec);
   await rememberNan(env, ses.uid);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);

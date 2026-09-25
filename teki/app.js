@@ -63,7 +63,7 @@ function modalHtml(e, seen) {
 }
 
 async function main() {
-  const res = await fetch("./data/entries.json");
+  const res = await fetch("./data/entries.json?v=0.4.78");
   const data = await res.json();
   const entries = data.entries || [];
   let seen = new Set();

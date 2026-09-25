@@ -1,4 +1,4 @@
-const VERSION = "0.4.77";
+const VERSION = "0.4.78";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -12,6 +12,7 @@ const FOE_SHEETS = {
   rebound: "art/foes/kitsunebi/sheet.png",
   well: "art/foes/suiko/sheet.png",
   boss: "art/foes/gyuki/sheet.png",
+  king: "art/foes/moogredon/sheet.png",
 };
 const FOE_NAMES = {
   small: { stem: "chiri", jp: "塵坊", en: "Chiri-bou" },
@@ -21,6 +22,7 @@ const FOE_NAMES = {
   rebound: { stem: "kitsunebi", jp: "狐火", en: "Kitsunebi" },
   well: { stem: "suiko", jp: "吸い子", en: "Suiko" },
   boss: { stem: "gyuki", jp: "牛鬼", en: "Moogre" },
+  king: { stem: "moogredon", jp: "総親玉", en: "Moogredon" },
 };
 
 const MODES = [
@@ -37,7 +39,19 @@ const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
 const THEME_KEY = "bo-aibou-theme";
 const KATSUDO_SES = "bo-aibou-katsudo-ses";
 const KATSUDO_PROF = "bo-aibou-katsudo-prof";
-const SEEN_STEMS = ["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki"];
+const SEEN_STEMS = ["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki", "moogredon"];
+const TITLE_RANK = { "": 0, "kitsui-nobiru": 1, sanseru: 2, sansho: 3 };
+function bestTitle(a, b) {
+  const x = TITLE_RANK[a] != null ? a : "";
+  const y = TITLE_RANK[b] != null ? b : "";
+  return (TITLE_RANK[x] || 0) >= (TITLE_RANK[y] || 0) ? x : y;
+}
+function titleJp(t) {
+  if (t === "sansho") return "総親玉を称賛";
+  if (t === "sanseru") return "総親玉を讃える";
+  if (t === "kitsui-nobiru") return "きついを生き延びた";
+  return "まだ";
+}
 const WELL_PAD = 30;
 function buzz(pat) {
   try {
@@ -159,7 +173,7 @@ function show(name) {
     loadBoard();
   }
   if (name === "play") {
-    ["#result-ov", "#raise-ov", "#pause-ov", "#bosshp"].forEach((s) => {
+    ["#result-ov", "#raise-ov", "#pause-ov", "#raid-ov", "#bosshp"].forEach((s) => {
       const el = $(s);
       if (el) el.classList.add("hidden");
     });
@@ -171,12 +185,14 @@ function show(name) {
     const rotate = $("#rotate");
     const stick = $("#stick");
     const ov = $("#pause-ov");
+    const raid = $("#raid-ov");
     const result = $("#result-ov");
     const raise = $("#raise-ov");
     const boss = $("#bosshp");
     if (rotate) rotate.classList.add("hidden");
     if (stick) stick.classList.add("hidden");
     if (ov) ov.classList.add("hidden");
+    if (raid) raid.classList.add("hidden");
     if (result) result.classList.add("hidden");
     if (raise) raise.classList.add("hidden");
     if (boss) boss.classList.add("hidden");
@@ -461,19 +477,20 @@ function seenNames(stems) {
 }
 
 function emptyKatsudo() {
-  return { v: 1, hardClears: 0, days: [], easy: [], hard: [], seen: [], told: [], title: "" };
+  return { v: 1, hardClears: 0, raidKills: 0, days: [], easy: [], hard: [], seen: [], told: [], title: "" };
 }
 
 function copyKatsudo(o) {
   return {
     v: 1,
     hardClears: Math.max(0, Math.min(99999, Number(o.hardClears) || 0)),
+    raidKills: Math.max(0, Math.min(99999, Number(o.raidKills) || 0)),
     days: cleanDays(o.days),
     easy: cleanDays(o.easy),
     hard: cleanDays(o.hard),
     seen: cleanSeen(o.seen),
     told: cleanDays(o.told),
-    title: o.title === "kitsui-nobiru" ? "kitsui-nobiru" : "",
+    title: bestTitle(o.title, Number(o.raidKills) >= 3 ? "sansho" : Number(o.raidKills) >= 1 ? "sanseru" : o.title),
   };
 }
 
@@ -498,15 +515,13 @@ function loadKatsudo() {
   const next = {
     v: 1,
     hardClears: Math.max(katsudoMem.hardClears, disk.hardClears),
+    raidKills: Math.max(katsudoMem.raidKills || 0, disk.raidKills || 0),
     days: cleanDays([...(katsudoMem.days || []), ...(disk.days || [])]),
     easy: cleanDays([...(katsudoMem.easy || []), ...(disk.easy || [])]),
     hard: cleanDays([...(katsudoMem.hard || []), ...(disk.hard || [])]),
     seen: cleanSeen([...(katsudoMem.seen || []), ...(disk.seen || [])]),
     told: cleanDays([...(katsudoMem.told || []), ...(disk.told || [])]),
-    title:
-      katsudoMem.title === "kitsui-nobiru" || disk.title === "kitsui-nobiru"
-        ? "kitsui-nobiru"
-        : "",
+    title: bestTitle(katsudoMem.title, disk.title),
   };
   katsudoMem = next;
   return copyKatsudo(next);
@@ -516,12 +531,13 @@ function saveKatsudo(o) {
   const next = copyKatsudo(o);
   if (katsudoMem) {
     next.hardClears = Math.max(next.hardClears, katsudoMem.hardClears);
+    next.raidKills = Math.max(next.raidKills || 0, katsudoMem.raidKills || 0);
     next.days = cleanDays([...(katsudoMem.days || []), ...(next.days || [])]);
     next.easy = cleanDays([...(katsudoMem.easy || []), ...(next.easy || [])]);
     next.hard = cleanDays([...(katsudoMem.hard || []), ...(next.hard || [])]);
     next.seen = cleanSeen([...(katsudoMem.seen || []), ...(next.seen || [])]);
     next.told = cleanDays([...(katsudoMem.told || []), ...(next.told || [])]);
-    if (katsudoMem.title === "kitsui-nobiru") next.title = "kitsui-nobiru";
+    next.title = bestTitle(next.title, katsudoMem.title);
   }
   katsudoMem = copyKatsudo(next);
   try {
@@ -538,6 +554,7 @@ function pushKatsudo(o) {
     body: JSON.stringify({
       days: o.days,
       hardClears: o.hardClears,
+      raidKills: o.raidKills || 0,
       seen: o.seen,
       told: o.told,
       title: o.title,
@@ -615,10 +632,11 @@ function mergeKatsudoRemote(remote) {
   const easy = cleanDays([...(local.easy || []), ...(Array.isArray(remote.easy) ? remote.easy : [])]);
   const hard = cleanDays([...(local.hard || []), ...(Array.isArray(remote.hard) ? remote.hard : [])]);
   const hardClears = Math.max(local.hardClears, Math.max(0, Number(remote.hardClears) || 0));
+  const raidKills = Math.max(local.raidKills || 0, Math.max(0, Number(remote.raidKills) || 0));
   const seen = cleanSeen([...(local.seen || []), ...(Array.isArray(remote.seen) ? remote.seen : [])]);
   const told = cleanDays([...(local.told || []), ...(Array.isArray(remote.told) ? remote.told : [])]);
-  const title = local.title === "kitsui-nobiru" || remote.title === "kitsui-nobiru" ? "kitsui-nobiru" : "";
-  const next = { v: 1, days: days.slice(-400), easy, hard, hardClears, seen, told, title };
+  const title = bestTitle(local.title, remote.title);
+  const next = { v: 1, days: days.slice(-400), easy, hard, hardClears, raidKills, seen, told, title };
   saveKatsudo(next);
   return next;
 }
@@ -643,6 +661,7 @@ async function pullKatsudo() {
       body: JSON.stringify({
         days: local.days,
         hardClears: local.hardClears,
+        raidKills: local.raidKills || 0,
         seen: local.seen,
         told: local.told,
         title: local.title,
@@ -750,6 +769,16 @@ function stampHardWin() {
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length, hardClears: o.hardClears };
 }
 
+function stampRaidKill() {
+  const o = loadKatsudo();
+  o.raidKills = Math.min(99999, (o.raidKills || 0) + 1);
+  o.title = bestTitle(o.title, o.raidKills >= 3 ? "sansho" : "sanseru");
+  o.v = 1;
+  saveKatsudo(o);
+  pushKatsudo(o);
+  return o;
+}
+
 function noteTold() {
   if (!state.last) return false;
   const o = loadKatsudo();
@@ -839,7 +868,7 @@ function paintKatsudo() {
         : "今日走ると印がつく";
   }
   if (title) {
-    title.textContent = has ? "きついを生き延びた" : "まだ";
+    title.textContent = titleJp(has ? o.title || "kitsui-nobiru" : "");
     title.classList.toggle("thanks", has);
     title.classList.toggle("hint", !has);
   }
@@ -1393,7 +1422,7 @@ function bootArena() {
       this.look = "right";
       this.cameras.main.setBackgroundColor(stage.bg);
       this.bakeMarks();
-      ["small", "thick", "brute", "fly", "rebound", "well", "boss"].forEach((job) => {
+      ["small", "thick", "brute", "fly", "rebound", "well", "boss", "king"].forEach((job) => {
         const key = `foe-${job}`;
         if (!this.textures.exists(key)) return;
         if (job === "well") {
@@ -1408,7 +1437,7 @@ function bootArena() {
         this.anims.create({
           key: `${key}-run`,
           frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
-          frameRate: job === "boss" ? 5 : job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
+          frameRate: job === "boss" || job === "king" ? 5 : job === "brute" ? 6 : job === "thick" ? 5 : job === "rebound" ? 8 : 9,
           repeat: -1,
         });
       });
@@ -1475,7 +1504,7 @@ function bootArena() {
           this.hp -= 2;
           this.hurtTick = 480;
           this.grazeStreak = 0;
-          if (this.hp <= 0) this.finish(false);
+          if (this.hp <= 0) this.die();
         }
         if (bolt.bounce > 0) {
           bolt.bounce -= 1;
@@ -1502,6 +1531,13 @@ function bootArena() {
       this.lastKill = 0;
       this.bossDone = false;
       this.bossDown = 0;
+      this.raid = false;
+      this.raidAsked = false;
+      this.raidWin = false;
+      this.raidFail = false;
+      this.raidDown = 0;
+      this.surviveLocked = false;
+      this.hardStamped = false;
       this.hitStop = 0;
       this.pullUntil = 0;
       this.fastUntil = 0;
@@ -1603,11 +1639,11 @@ function bootArena() {
       } else if (hud.buff) hud.buff.textContent = "";
       hud.skill.textContent = `${k.skill} ${this.skillDmg()}`;
       const t = Math.max(0, Math.ceil(this.left));
-      hud.time.textContent = `${t}秒`;
+      hud.time.textContent = this.raid ? "親玉" : `${t}秒`;
     }
     liveScore(win) {
       const clear = win ? (mode.id === "hard" ? 100 : 25) : 0;
-      return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + this.grazeScore;
+      return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + (this.raidDown || 0) * 150 + this.grazeScore;
     }
     hajikiFoe(f) {
       if (!f || !f.active || f.hajiki || f.boss) return;
@@ -1761,6 +1797,7 @@ function bootArena() {
     }
     spawn(kind) {
       const boss = kind === "boss";
+      if (!boss && this.raid) return;
       if (!boss && this.foes.countActive(true) >= 16) return;
       let job = boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
       if (!boss && job === "well") {
@@ -1988,6 +2025,7 @@ function bootArena() {
         }
         this.spawnWard();
       }
+      if (this.raidWin && !this.ended) this.finish(true);
     }
     spawnWard() {
       if (this.ward && this.ward.active) this.ward.destroy();
@@ -2101,6 +2139,7 @@ function bootArena() {
       }
       if (foe.hp <= 0) {
         const boss = foe.boss;
+        const king = !!foe.king;
         const x = foe.x;
         const y = foe.y;
         foe.destroy();
@@ -2126,6 +2165,10 @@ function bootArena() {
         if (boss) {
           this.clearDashLane();
           this.bossDown += 1;
+          if (king) {
+            this.raidDown = 1;
+            this.raidWin = true;
+          }
           this.dropGem(x - 16, y);
           this.dropGem(x + 16, y);
           this.dropGem(x, y - 16);
@@ -2136,7 +2179,7 @@ function bootArena() {
           this.callout("倒した");
           this.pop(x, y - 18, "親玉 +12");
           this.startHitStop(560);
-          this.wardPending = true;
+          this.wardPending = !king;
           if (this.hasSprite && this.player) this.player.setTint(0xf8b500);
           const bar = $("#bosshp");
           if (bar) bar.classList.add("hidden");
@@ -2312,6 +2355,14 @@ function bootArena() {
         }
       }
     }
+    die() {
+      if (this.raid) {
+        this.raidFail = true;
+        this.finish(true);
+        return;
+      }
+      this.finish(false);
+    }
     finish(win) {
       if (this.ended) return;
       this.ended = true;
@@ -2341,8 +2392,14 @@ function bootArena() {
         }
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
-      const stampedHard = Boolean(win && hard);
+      const survived = Boolean(win || this.surviveLocked);
+      const stampedHard = Boolean(survived && hard && !this.hardStamped);
+      if (stampedHard) this.hardStamped = true;
       const played = stampedHard ? stampHardWin() : stampPlayDay(mode.id);
+      if (this.raidWin) {
+        const o = stampRaidKill();
+        showToast(o.raidKills >= 3 ? "称賛" : "讃える");
+      }
       state.last = {
         win,
         id: mate.id,
@@ -2356,8 +2413,14 @@ function bootArena() {
         mode: mode.id,
       };
       if (state.game) freezeScene();
-      $("[data-result-title]").textContent = win ? "生き延びた" : "やられた";
-      $("[data-thanks]").textContent = win ? "おめでとうございます" : "まだいける。もういちど";
+      $("[data-result-title]").textContent = survived ? "生き延びた" : "やられた";
+      $("[data-thanks]").textContent = this.raidWin
+        ? "総親玉を倒した"
+        : this.raidFail
+          ? "親玉にやられた"
+          : win
+            ? "おめでとうございます"
+            : "まだいける。もういちど";
       const raiseBtn = $("[data-raise]");
       if (raiseBtn) raiseBtn.textContent = rec ? "𝕏でドヤる" : "𝕏でシェアする";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
@@ -2376,9 +2439,72 @@ function bootArena() {
       const baBtn = $("[data-ba-post]");
       if (baBtn) baBtn.classList.toggle("hidden", !loadKatsudoSes());
       const pause = $("#pause-ov");
+      const raid = $("#raid-ov");
       const result = $("#result-ov");
       if (pause) pause.classList.add("hidden");
+      if (raid) raid.classList.add("hidden");
       if (result) result.classList.remove("hidden");
+    }
+    latePush() {
+      this.callout("終盤");
+      buzz([20, 30, 20, 30, 40]);
+      this.foes.children.iterate((f) => {
+        if (!f || !f.active || f.boss) return;
+        f.hp = Math.ceil(f.hp * 1.4);
+        f.maxHp = Math.ceil(f.maxHp * 1.4);
+      });
+    }
+    askRaid() {
+      const ov = $("#raid-ov");
+      if (ov) ov.classList.remove("hidden");
+      freezeScene();
+    }
+    beginRaid() {
+      this.raid = true;
+      this.surviveLocked = true;
+      if (!this.hardStamped) {
+        stampHardWin();
+        this.hardStamped = true;
+      }
+      let boss = null;
+      this.foes.children.iterate((f) => {
+        if (f && f.active && f.boss) boss = f;
+      });
+      if (!boss) return;
+      boss.king = true;
+      boss.wind = 0;
+      boss.lunge = 0;
+      boss.dashCd = 400;
+      const extra = 340 + this.lv * 20;
+      boss.hp = Math.max(1, boss.hp) + extra;
+      boss.maxHp = boss.hp;
+      boss.raged = false;
+      boss.spd = 92 * mode.pace;
+      if (this.textures.exists("foe-king")) {
+        boss.setTexture("foe-king");
+        if (this.anims && this.anims.exists && this.anims.exists("foe-king-run")) boss.play("foe-king-run");
+        boss.setScale(1.2);
+        boss.baseScale = 1.2;
+        const rad = 80;
+        if (boss.body) boss.body.setCircle(rad, 80 - rad, 80 - rad);
+      }
+      if (!this.seenJobs) this.seenJobs = new Set();
+      this.seenJobs.add("moogredon");
+      markSeenLocal("moogredon");
+      const lab = $(".bosslabel");
+      if (lab) lab.textContent = "Moogredon";
+      const av = $(".bossava");
+      if (av) av.src = `art/foes/moogredon/avatar.png?v=${VERSION}`;
+      const bar = $("#bosshp");
+      if (bar) {
+        bar.classList.remove("hidden", "rage");
+        const hp = $("[data-boss-hpbar]");
+        if (hp) hp.style.width = "100%";
+      }
+      paintBossLabel();
+      this.callout("総親玉");
+      if (this.cameras && this.cameras.main) this.cameras.main.shake(260, 0.014);
+      buzz([30, 40, 90, 40, 90]);
     }
     update(_t, delta) {
       if (this.ended) return;
@@ -2393,19 +2519,26 @@ function bootArena() {
       this.secAcc += delta;
       if (this.secAcc >= 1000) {
         this.secAcc -= 1000;
-        this.left -= 1;
+        if (!this.raid) this.left -= 1;
         this.waveAcc += 1;
         this.pace = mode.pace;
-        if (this.left === 15) {
-          this.callout("終盤");
-          buzz([20, 30, 20, 30, 40]);
+        if (!this.raid && this.left === 15) {
+          let living = null;
           this.foes.children.iterate((f) => {
-            if (!f || !f.active || f.boss) return;
-            f.hp = Math.ceil(f.hp * 1.4);
-            f.maxHp = Math.ceil(f.maxHp * 1.4);
+            if (f && f.active && f.boss) living = f;
           });
+          if (mode.id === "hard" && living && !this.raidAsked) {
+            this.raidAsked = true;
+            this.clearDashLane();
+            living.wind = 0;
+            living.lunge = 0;
+            living.dashCd = 800;
+            this.askRaid();
+          } else {
+            this.latePush();
+          }
         }
-        if (this.waveAcc === 20) {
+        if (!this.raid && this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
           const job = this.pickJob();
@@ -2424,15 +2557,15 @@ function bootArena() {
           const play = $(".play");
           if (play) play.classList.remove("combo");
         }
-        if (this.left <= 0) this.finish(true);
+        if (!this.raid && this.left <= 0) this.finish(true);
       }
       this.chestAcc += delta;
-      if (this.chestAcc > 12000) {
+      if (!this.raid && this.chestAcc > 12000) {
         this.chestAcc = 0;
         this.spawnChest();
       }
       this.spawnAcc += delta * this.pace;
-      if (this.spawnAcc > 900) {
+      if (!this.raid && this.spawnAcc > 900) {
         this.spawnAcc = 0;
         this.spawn();
       }
@@ -2572,7 +2705,7 @@ function bootArena() {
                   this.hp -= 2;
                   this.hurtTick = 400;
                   this.grazeStreak = 0;
-                  if (this.hp <= 0) this.finish(false);
+                  if (this.hp <= 0) this.die();
                 }
               }
             }
@@ -2596,7 +2729,7 @@ function bootArena() {
           this.hurtTick = bull ? 720 : f.boss ? 480 : 650;
           this.grazeStreak = 0;
           if (bull) this.pop(this.player.x, this.player.y - 32, "直撃", "#ff3d8a");
-          if (this.hp <= 0) this.finish(false);
+          if (this.hp <= 0) this.die();
         } else if (d < reach && guarded) {
           if (!f.boss) this.hajikiFoe(f);
         } else if (f.hajiki && d > reach + 36) {
@@ -2647,6 +2780,12 @@ function bootArena() {
         bar.classList.toggle("hidden", !boss);
         if (!boss) bar.classList.remove("rage");
         if (boss) paintBossLabel();
+        if (boss) {
+          const lab = $(".bosslabel");
+          if (lab) lab.textContent = boss.king ? "Moogredon" : "Moogre";
+          const av = $(".bossava");
+          if (av && !boss.king) av.src = `art/foes/gyuki/avatar.png?v=${VERSION}`;
+        }
         if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
       }
       if (this.ward && this.ward.active) {
@@ -2723,6 +2862,7 @@ function pausePlay() {
   if ($("#rotate") && !$("#rotate").classList.contains("hidden")) return;
   if ($("#result-ov") && !$("#result-ov").classList.contains("hidden")) return;
   if ($("#raise-ov") && !$("#raise-ov").classList.contains("hidden")) return;
+  if ($("#raid-ov") && !$("#raid-ov").classList.contains("hidden")) return;
   const ov = $("#pause-ov");
   if (ov && !ov.classList.contains("hidden")) return;
   if (state.game) freezeScene();
@@ -2733,6 +2873,28 @@ function resumePlay() {
   const ov = $("#pause-ov");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
+  tryFullscreen();
+  thawScene();
+  syncPlayGate();
+}
+
+function acceptRaid() {
+  const ov = $("#raid-ov");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (sc && sc.beginRaid) sc.beginRaid();
+  tryFullscreen();
+  thawScene();
+  syncPlayGate();
+}
+
+function declineRaid() {
+  const ov = $("#raid-ov");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  const sc = state.game && state.game.scene.getScene("arena");
+  if (sc && sc.latePush) sc.latePush();
   tryFullscreen();
   thawScene();
   syncPlayGate();
@@ -2798,6 +2960,7 @@ function bindUi() {
     const ov = $("#pause-ov");
     if ($("#result-ov") && !$("#result-ov").classList.contains("hidden")) return;
     if ($("#raise-ov") && !$("#raise-ov").classList.contains("hidden")) return;
+    if ($("#raid-ov") && !$("#raid-ov").classList.contains("hidden")) return;
     if (ov && !ov.classList.contains("hidden")) resumePlay();
     else if (play && !play.classList.contains("hidden")) pausePlay();
   });
@@ -2910,6 +3073,14 @@ function bindUi() {
     }
     if (hit(ev,"[data-resume]")) {
       resumePlay();
+      return;
+    }
+    if (hit(ev,"[data-raid-yes]")) {
+      acceptRaid();
+      return;
+    }
+    if (hit(ev,"[data-raid-no]")) {
+      declineRaid();
       return;
     }
     if (hit(ev,"[data-quit]")) {

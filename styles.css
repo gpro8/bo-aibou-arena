@@ -106,12 +106,16 @@ html:-webkit-full-screen .play * {
 }
 html:fullscreen #pause-ov,
 html:fullscreen #pause-ov *,
+html:fullscreen #raid-ov,
+html:fullscreen #raid-ov *,
 html:fullscreen #result-ov,
 html:fullscreen #result-ov *,
 html:fullscreen #raise-ov,
 html:fullscreen #raise-ov *,
 html:-webkit-full-screen #pause-ov,
 html:-webkit-full-screen #pause-ov *,
+html:-webkit-full-screen #raid-ov,
+html:-webkit-full-screen #raid-ov *,
 html:-webkit-full-screen #result-ov,
 html:-webkit-full-screen #result-ov *,
 html:-webkit-full-screen #raise-ov,
@@ -119,6 +123,7 @@ html:-webkit-full-screen #raise-ov * {
   cursor: auto;
 }
 #pause-ov,
+#raid-ov,
 #result-ov {
   position: absolute;
   inset: 0;
@@ -133,8 +138,8 @@ html:-webkit-full-screen #raise-ov * {
   overflow: auto;
   padding: 16px;
 }
-#pause-ov.hidden, #result-ov.hidden { display: none !important; }
-#pause-ov h1, #result-ov h1 { color: var(--gold); }
+#pause-ov.hidden, #raid-ov.hidden, #result-ov.hidden { display: none !important; }
+#pause-ov h1, #raid-ov h1, #result-ov h1 { color: var(--gold); }
 #result-ov .col { width: min(360px, 100%); }
 #result-ov .flag-card {
   width: auto;
