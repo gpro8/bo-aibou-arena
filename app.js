@@ -1,4 +1,4 @@
-const VERSION = "0.4.80";
+const VERSION = "0.4.81";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1786,6 +1786,17 @@ function bootArena() {
       flame.fillCircle(14, 13, 2);
       flame.generateTexture("mark-fire", 32, 32);
       flame.destroy();
+      const oni = this.make.graphics({ add: false });
+      oni.fillStyle(0x6a4c9c, 0.95);
+      oni.fillCircle(16, 16, 12);
+      oni.fillStyle(0x8b6bb8, 1);
+      oni.fillCircle(16, 16, 8);
+      oni.lineStyle(2, 0xf8b500, 1);
+      oni.strokeCircle(16, 16, 12);
+      oni.fillStyle(0xfff4a3, 1);
+      oni.fillCircle(14, 13, 2);
+      oni.generateTexture("mark-fan", 32, 32);
+      oni.destroy();
       const boss = this.make.graphics({ add: false });
       boss.fillStyle(0x1a1018, 1);
       boss.fillCircle(32, 32, 28);
@@ -1897,6 +1908,9 @@ function bootArena() {
       foe.lunge = 0;
       foe.shotAcc = 0;
       foe.pulling = 0;
+      foe.fanCd = king ? 2200 : 0;
+      foe.fanWind = 0;
+      foe.fanVolley = 0;
       if (!boss && !art) {
         foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "well" ? 1.4 : job === "fly" || job === "rebound" ? 0.88 : 1);
         if (job === "brute") foe.setTint(0x2a1040);
@@ -1926,6 +1940,87 @@ function bootArena() {
       if (kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
       this.bolts.add(b);
     }
+    fireFanBolt(from, ang) {
+      if (!from || !from.active) return;
+      const b = this.physics.add.sprite(from.x, from.y, "mark-fan");
+      b.setScale(0.72);
+      b.fan = true;
+      b.fire = true;
+      b.setDepth(7);
+      b.body.setCircle(7, 4, 4);
+      b.life = 2000;
+      b.bounce = 0;
+      b.iframes = 0;
+      const spd = 122;
+      b.body.setVelocity(Math.cos(ang) * spd, Math.sin(ang) * spd);
+      this.bolts.add(b);
+    }
+    fireFan(from, wide) {
+      const ang = from.fanAng || 0;
+      const spread = wide ? Math.PI / 4.5 : Math.PI / 6;
+      this.fireFanBolt(from, ang);
+      this.fireFanBolt(from, ang - spread);
+      this.fireFanBolt(from, ang + spread);
+    }
+    paintFanLane(f) {
+      if (!this.fanLane) {
+        this.fanLane = this.add.graphics();
+        this.fanLane.setDepth(9);
+      }
+      const g = this.fanLane;
+      g.clear();
+      const ang = f.fanAng || 0;
+      const ox = f.fanOx ?? f.x;
+      const oy = f.fanOy ?? f.y;
+      const len = 420;
+      const spread = Math.PI / 6;
+      const flash = Math.floor(this.time.now / 80) % 2 === 1;
+      [-spread, 0, spread].forEach((off) => {
+        const a = ang + off;
+        const x2 = ox + Math.cos(a) * len;
+        const y2 = oy + Math.sin(a) * len;
+        g.lineStyle(10, 0x6a4c9c, flash ? 0.52 : 0.22);
+        g.beginPath();
+        g.moveTo(ox, oy);
+        g.lineTo(x2, y2);
+        g.strokePath();
+        g.lineStyle(3, 0xf8b500, flash ? 0.95 : 0.42);
+        g.beginPath();
+        g.moveTo(ox, oy);
+        g.lineTo(x2, y2);
+        g.strokePath();
+      });
+    }
+    clearFanLane() {
+      if (this.fanLane) this.fanLane.clear();
+    }
+    tickFan(f, delta) {
+      if (!f.king || !this.player) return false;
+      f.fanCd = f.fanCd || 0;
+      if (f.fanCd > 0) f.fanCd -= delta;
+      if (f.fanWind > 0) {
+        f.fanWind -= delta;
+        f.body.setVelocity(0, 0);
+        this.paintFanLane(f);
+        if (f.fanWind <= 0) {
+          this.clearFanLane();
+          this.fireFan(f, false);
+          f.fanCd = 4000;
+          if (f.maxHp && f.hp <= f.maxHp * 0.5) f.fanVolley = 360;
+        }
+        return true;
+      }
+      if (f.fanCd <= 0 && f.wind <= 0 && f.lunge <= 0) {
+        f.fanAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
+        f.fanOx = f.x;
+        f.fanOy = f.y;
+        f.fanWind = 400;
+        f.body.setVelocity(0, 0);
+        this.paintFanLane(f);
+        return true;
+      }
+      return false;
+    }
     paintDashLane(f, running) {
       if (!this.dashLane) {
         this.dashLane = this.add.graphics();
@@ -1953,6 +2048,7 @@ function bootArena() {
     }
     clearDashLane() {
       if (this.dashLane) this.dashLane.clear();
+      this.clearFanLane();
     }
     wellSucking() {
       let yes = false;
@@ -2622,7 +2718,16 @@ function bootArena() {
         if (f.boss) {
           f.dashCd = f.dashCd || 0;
           if (f.dashCd > 0) f.dashCd -= delta;
-          if (d < 180 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0) {
+          if (f.king) {
+            f.fanVolley = f.fanVolley || 0;
+            if (f.fanVolley > 0) {
+              f.fanVolley -= delta;
+              if (f.fanVolley <= 0) this.fireFan(f, true);
+            }
+          }
+          if (d < 180 && f.wind <= 0 && f.lunge <= 0 && f.dashCd <= 0 && !(f.king && f.fanWind > 0)) {
+            f.fanWind = 0;
+            if (f.king) this.clearFanLane();
             f.wind = 500;
             f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
             f.dashOx = f.x;
@@ -2650,12 +2755,15 @@ function bootArena() {
             if (f.dashDist >= f.dashLen || off) {
               f.lunge = 0;
               f.dashCd = 1400;
+              if (f.king) f.fanCd = Math.min(f.fanCd || 9999, 700);
               f.body.setVelocity(0, 0);
               f.x = Phaser.Math.Clamp(f.x, 24, w - 24);
               f.y = Phaser.Math.Clamp(f.y, 24, h - 24);
             }
           } else if (this.wellSucking()) {
             f.body.setVelocity(0, 0);
+          } else if (this.tickFan(f, delta)) {
+            /* 鬼火扇 telegraph */
           } else {
             this.physics.moveToObject(f, this.player, f.spd || 80);
           }
