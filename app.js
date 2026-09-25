@@ -1,4 +1,4 @@
-const VERSION = "0.4.81";
+const VERSION = "0.4.82";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -563,6 +563,8 @@ function pushKatsudo(o) {
     method: "POST",
     body: JSON.stringify({
       days: o.days,
+      easy: o.easy,
+      hard: o.hard,
       hardClears: o.hardClears,
       raidKills: o.raidKills || 0,
       raidBestMs: o.raidBestMs || 0,
@@ -672,6 +674,8 @@ async function pullKatsudo() {
       method: "POST",
       body: JSON.stringify({
         days: local.days,
+        easy: local.easy,
+        hard: local.hard,
         hardClears: local.hardClears,
         raidKills: local.raidKills || 0,
         raidBestMs: local.raidBestMs || 0,
@@ -1115,6 +1119,19 @@ async function loadBa() {
   }
 }
 
+function bestForMode(mode) {
+  try {
+    const all = JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
+    let n = 0;
+    Object.keys(all).forEach((k) => {
+      if (k.endsWith(`:${mode}`)) n = Math.max(n, Number(all[k]) || 0);
+    });
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
 async function postBa() {
   const run = state.last;
   if (!run) return;
@@ -1124,9 +1141,10 @@ async function postBa() {
   }
   const mode = run.mode === "easy" ? "easy" : run.mode === "long" ? "long" : run.mode === "hard" ? "hard" : "";
   if (!mode) return;
+  const score = Math.max(0, Math.min(99999, Math.max(Number(run.score) || 0, bestForMode(mode))));
   const got = await katsudoFetch("/v1/ba", {
     method: "POST",
-    body: JSON.stringify({ mode, score: run.score, version: VERSION }),
+    body: JSON.stringify({ mode, score, version: VERSION }),
   });
   if (got.status === 401) {
     saveKatsudoSes("");
@@ -1673,7 +1691,8 @@ function bootArena() {
       hud.time.textContent = this.raid ? "大妖怪" : `${t}秒`;
     }
     liveScore(win) {
-      const clear = win ? (mode.id === "hard" ? 100 : 25) : 0;
+      const hardClear = mode.id === "hard" && (win || this.hardStamped);
+      const clear = hardClear ? 100 : win && mode.id !== "hard" ? 25 : 0;
       return this.lv * 12 + this.kills * 2 + this.maxCombo * 3 + clear + this.bossDown * 55 + (this.raidDown || 0) * 150 + this.grazeScore;
     }
     hajikiFoe(f) {

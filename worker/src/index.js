@@ -325,7 +325,12 @@ async function handleSync(env, request) {
   }
   const incoming = cleanRecord(body);
   const rec = await loadUser(env, ses.uid);
+  rec.days = cleanDays([...(rec.days || []), ...(incoming.days || [])]);
+  rec.easy = cleanDays([...(rec.easy || []), ...(incoming.easy || [])]);
+  rec.hard = cleanDays([...(rec.hard || []), ...(incoming.hard || [])]);
+  rec.told = cleanDays([...(rec.told || []), ...(incoming.told || [])]);
   rec.seen = cleanSeen([...(rec.seen || []), ...(incoming.seen || [])]);
+  rec.hardClears = Math.max(rec.hardClears || 0, incoming.hardClears || 0);
   rec.raidKills = Math.max(rec.raidKills || 0, incoming.raidKills || 0);
   rec.raidBestMs = bestMs(rec.raidBestMs, incoming.raidBestMs);
   rec.title = bestTitle(rec.title, incoming.title);
@@ -544,13 +549,16 @@ async function handleBaPost(env, request) {
   const score = Math.max(0, Math.min(SCORE_MAX, Math.floor(Number(body.score) || 0)));
   const prof = await loadProfile(env, ses.uid);
   const raw = await kvJson(env, `ba:${mode}`);
+  const prev = Array.isArray(raw) ? raw.find((r) => r && r.uid === ses.uid) : null;
+  const prevScore = Math.max(0, Math.min(SCORE_MAX, Number(prev && prev.score) || 0));
+  const kept = Math.max(prevScore, score);
   const rows = Array.isArray(raw) ? raw.filter((r) => r && r.uid !== ses.uid) : [];
   rows.push({
     uid: ses.uid,
     name: prof.name || "走った人",
     av: prof.av,
-    score,
-    t: Date.now(),
+    score: kept,
+    t: kept > prevScore ? Date.now() : (prev && prev.t) || Date.now(),
   });
   rows.sort((a, b) => b.score - a.score || a.t - b.t);
   await kvPut(env, `ba:${mode}`, rows.slice(0, BA_CAP));
