@@ -1,4 +1,4 @@
-const VERSION = "0.4.82";
+const VERSION = "0.4.83";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1218,10 +1218,16 @@ function loadImg(src) {
   });
 }
 
+function runHeadline(run) {
+  if (run && run.raidWin) return "大妖怪を倒した";
+  if (run && run.win) return "生き延びた";
+  return "やられた";
+}
+
 function raiseText(run) {
   return [
     "相棒あそび",
-    `${run.name} ${run.win ? "生き延びた" : "やられた"}`,
+    `${run.name} ${runHeadline(run)}`,
     `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
     "入場・参加無料",
     "活動記録でつなぐ",
@@ -1262,8 +1268,9 @@ async function paintFlagCard(run) {
   ctx.font = "700 28px sans-serif";
   ctx.fillText("BushiDAO · 相棒あそび", 540, 120);
   ctx.fillStyle = "#f3eadc";
-  ctx.font = "700 80px sans-serif";
-  ctx.fillText(run.win ? "生き延びた" : "やられた", 540, 710);
+  const head = runHeadline(run);
+  ctx.font = head.length > 5 ? "700 64px sans-serif" : "700 80px sans-serif";
+  ctx.fillText(head, 540, 710);
   ctx.fillStyle = "#f8b500";
   ctx.font = "700 48px sans-serif";
   ctx.fillText(run.name, 540, 780);
@@ -1290,7 +1297,7 @@ async function paintFlagCard(run) {
   if (img) {
     img.src = c.toDataURL("image/png");
     img.classList.remove("hidden");
-    img.alt = `${run.name} ${run.win ? "生き延びた" : "やられた"}`;
+    img.alt = `${run.name} ${runHeadline(run)}`;
   }
 }
 
@@ -2578,9 +2585,10 @@ function bootArena() {
         rec,
         hard,
         mode: mode.id,
+        raidWin: Boolean(this.raidWin),
       };
       if (state.game) freezeScene();
-      $("[data-result-title]").textContent = survived ? "生き延びた" : "やられた";
+      $("[data-result-title]").textContent = this.raidWin ? "大妖怪を倒した" : survived ? "生き延びた" : "やられた";
       $("[data-thanks]").textContent = this.raidWin
         ? "大妖怪を倒した"
         : this.raidFail
