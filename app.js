@@ -1,4 +1,4 @@
-const VERSION = "0.4.84";
+const VERSION = "0.4.85";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1326,17 +1326,21 @@ function raiseMsg(s) {
 function raiseFlag() {
   const pack = cardPack();
   if (!pack) return;
-  noteTold();
   if (isCoarse() && navigator.share) {
     const payload =
       navigator.canShare && navigator.canShare({ files: [pack.file] })
         ? { files: [pack.file], text: pack.text, title: "相棒あそび" }
         : { text: pack.text, url: PLAY_URL, title: "相棒あそび" };
-    navigator.share(payload).catch((err) => {
-      if (err && err.name === "AbortError") return;
-      const ov = $("#raise-ov");
-      if (ov) ov.classList.remove("hidden");
-    });
+    navigator
+      .share(payload)
+      .then(() => {
+        noteTold();
+      })
+      .catch((err) => {
+        if (err && err.name === "AbortError") return;
+        const ov = $("#raise-ov");
+        if (ov) ov.classList.remove("hidden");
+      });
     return;
   }
   raiseMsg("");
@@ -1347,16 +1351,19 @@ function raiseFlag() {
 function raiseCopy() {
   const pack = cardPack();
   if (!pack) return;
-  noteTold();
   clickA(pack.tweet);
   const ok = navigator.clipboard && window.ClipboardItem;
   if (!ok) {
+    noteTold();
     raiseMsg("コピーできない。保存して添付");
     return;
   }
   const img = pack.blob;
   const txt = new Blob([pack.text], { type: "text/plain" });
-  const done = (s) => raiseMsg(s);
+  const done = (s) => {
+    noteTold();
+    raiseMsg(s);
+  };
   navigator.clipboard
     .write([new ClipboardItem({ "image/png": img, "text/plain": txt })])
     .then(() => done("コピーした。𝕏に貼る"))
@@ -1364,7 +1371,10 @@ function raiseCopy() {
       navigator.clipboard
         .write([new ClipboardItem({ "image/png": img })])
         .then(() => done("画像をコピーした。文は𝕏の投稿欄"))
-        .catch(() => done("コピーできない。保存して添付"))
+        .catch(() => {
+          noteTold();
+          raiseMsg("コピーできない。保存して添付");
+        })
     );
 }
 
@@ -1372,7 +1382,18 @@ function raiseSave() {
   const pack = cardPack();
   if (!pack) return;
   clickA(pack.dataUrl, "share.png");
-  raiseMsg("保存した");
+  const finish = (msg) => {
+    noteTold();
+    raiseMsg(msg);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(pack.text)
+      .then(() => finish("保存した。文をコピーした。𝕏に画像を添付"))
+      .catch(() => finish("保存した。文はコピーして𝕏"));
+    return;
+  }
+  finish("保存した。文はコピーして𝕏");
 }
 
 function renderSetup() {
