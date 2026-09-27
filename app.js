@@ -1,4 +1,4 @@
-const VERSION = "0.4.83";
+const VERSION = "0.4.84";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1119,19 +1119,6 @@ async function loadBa() {
   }
 }
 
-function bestForMode(mode) {
-  try {
-    const all = JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
-    let n = 0;
-    Object.keys(all).forEach((k) => {
-      if (k.endsWith(`:${mode}`)) n = Math.max(n, Number(all[k]) || 0);
-    });
-    return n;
-  } catch {
-    return 0;
-  }
-}
-
 async function postBa() {
   const run = state.last;
   if (!run) return;
@@ -1141,7 +1128,7 @@ async function postBa() {
   }
   const mode = run.mode === "easy" ? "easy" : run.mode === "long" ? "long" : run.mode === "hard" ? "hard" : "";
   if (!mode) return;
-  const score = Math.max(0, Math.min(99999, Math.max(Number(run.score) || 0, bestForMode(mode))));
+  const score = Math.max(0, Math.min(99999, Math.floor(Number(run.score) || 0)));
   const got = await katsudoFetch("/v1/ba", {
     method: "POST",
     body: JSON.stringify({ mode, score, version: VERSION }),
