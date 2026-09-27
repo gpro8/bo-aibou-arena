@@ -1,4 +1,4 @@
-const VERSION = "0.4.85";
+const VERSION = "0.4.86";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -797,8 +797,9 @@ function stampRaidKill(ms) {
   return o;
 }
 
-function noteTold() {
+function noteTold(opts) {
   if (!state.last) return false;
+  const quiet = Boolean(opts && opts.quiet);
   const o = loadKatsudo();
   const day = jstDay();
   const fresh = !(o.told || []).includes(day);
@@ -807,7 +808,7 @@ function noteTold() {
     saveKatsudo(o);
     const n = o.told.length;
     const honor = toldHonor(n);
-    showToast(n === 3 || n === 7 || n === 30 ? honor : "語った");
+    if (!quiet) showToast(n === 3 || n === 7 || n === 30 ? honor : "語った");
     paintKatsudo();
   }
   serverStamp(["told"]);
@@ -1383,8 +1384,9 @@ function raiseSave() {
   if (!pack) return;
   clickA(pack.dataUrl, "share.png");
   const finish = (msg) => {
-    noteTold();
-    raiseMsg(msg);
+    const fresh = noteTold({ quiet: true });
+    const told = fresh ? "語った" : "今日は語った";
+    raiseMsg(`${msg} · ${told}`);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard
