@@ -1,4 +1,4 @@
-const VERSION = "0.4.86";
+const VERSION = "0.4.87";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1590,6 +1590,7 @@ function bootArena() {
       this.maxCombo = 0;
       this.lastKill = 0;
       this.bossDone = false;
+      this.wellTried = false;
       this.bossDown = 0;
       this.raid = false;
       this.raidAsked = false;
@@ -1866,6 +1867,15 @@ function bootArena() {
     }
     pickJob() {
       const p = this.clockPct();
+      if (mode.id === "easy") {
+        if (p < 0.18) return "small";
+        if (p < 0.42) return Math.random() < 0.58 ? "thick" : "small";
+        if (p < 0.68) return Math.random() < 0.7 ? "brute" : "thick";
+        const r = Math.random();
+        if (r < 0.14) return "fly";
+        if (r < 0.26) return "rebound";
+        return Math.random() < 0.55 ? "brute" : "thick";
+      }
       if (p < 0.15) return "small";
       if (p < 0.33) return Math.random() < 0.55 ? "thick" : "small";
       if (p < 0.48) return Math.random() < 0.6 ? "brute" : "thick";
@@ -1884,7 +1894,7 @@ function bootArena() {
         this.foes.children.iterate((f) => {
           if (f && f.active && f.job === "well") hasWell = true;
         });
-        if (hasWell) job = "rebound";
+        if (hasWell) job = mode.id === "easy" ? "thick" : "rebound";
       }
       const w = this.scale.width;
       const h = this.scale.height;
@@ -2694,9 +2704,21 @@ function bootArena() {
         if (!this.raid && this.waveAcc === 20) {
           this.callout("来るぞ");
           buzz([18, 24, 18]);
-          const job = this.pickJob();
-          for (let i = 0; i < 3; i += 1) this.spawn(job);
+          if (mode.id === "easy") {
+            for (let i = 0; i < 2; i += 1) this.spawn();
+          } else {
+            const job = this.pickJob();
+            for (let i = 0; i < 3; i += 1) this.spawn(job);
+          }
           this.waveAcc = 0;
+        }
+        if (
+          mode.id === "easy" &&
+          !this.wellTried &&
+          this.left === Math.floor(mode.secs * 0.28)
+        ) {
+          this.wellTried = true;
+          if (Math.random() < 0.4) this.spawn("well");
         }
         if (!this.bossDone && this.left === Math.floor(mode.secs * 0.45)) {
           this.bossDone = true;
