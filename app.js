@@ -1,4 +1,4 @@
-const VERSION = "0.4.87";
+const VERSION = "0.4.88";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1561,7 +1561,7 @@ function bootArena() {
         if (bolt.iframes > 0) return;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (!guarded) {
-          this.hp -= 2;
+          this.hp -= bolt.fan ? 4 : 2;
           this.hurtTick = 480;
           this.grazeStreak = 0;
           if (this.hp <= 0) this.die();
@@ -1989,12 +1989,12 @@ function bootArena() {
     fireFanBolt(from, ang) {
       if (!from || !from.active) return;
       const b = this.physics.add.sprite(from.x, from.y, "mark-fan");
-      b.setScale(0.72);
+      b.setScale(0.92);
       b.fan = true;
       b.fire = true;
       b.setDepth(7);
-      b.body.setCircle(7, 4, 4);
-      b.life = 2000;
+      b.body.setCircle(12, 4, 4);
+      b.life = 4000;
       b.bounce = 0;
       b.iframes = 0;
       const spd = 122;
