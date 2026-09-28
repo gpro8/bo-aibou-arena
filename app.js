@@ -1,4 +1,4 @@
-const VERSION = "0.4.88";
+const VERSION = "0.4.89";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1988,18 +1988,29 @@ function bootArena() {
     }
     fireFanBolt(from, ang) {
       if (!from || !from.active) return;
-      const b = this.physics.add.sprite(from.x, from.y, "mark-fan");
-      b.setScale(0.92);
+      const spd = 240;
+      const nose = 90;
+      const vx = Math.cos(ang) * spd;
+      const vy = Math.sin(ang) * spd;
+      const x = from.x + Math.cos(ang) * nose;
+      const y = from.y + Math.sin(ang) * nose;
+      const b = this.physics.add.sprite(x, y, "mark-fan");
+      b.setScale(0.78);
       b.fan = true;
       b.fire = true;
+      b.fanVx = vx;
+      b.fanVy = vy;
       b.setDepth(7);
-      b.body.setCircle(12, 4, 4);
-      b.life = 4000;
+      b.life = 2800;
       b.bounce = 0;
       b.iframes = 0;
-      const spd = 122;
-      b.body.setVelocity(Math.cos(ang) * spd, Math.sin(ang) * spd);
       this.bolts.add(b);
+      if (b.body) {
+        b.body.setAllowGravity(false);
+        b.body.setCircle(10, 6, 6);
+        b.body.moves = true;
+        b.body.setVelocity(vx, vy);
+      }
     }
     fireFan(from, wide) {
       const ang = from.fanAng || 0;
@@ -2959,6 +2970,15 @@ function bootArena() {
       });
       this.bolts.children.iterate((b) => {
         if (!b || !b.active) return;
+        if (b.fan) {
+          const dt = delta / 1000;
+          b.x += (b.fanVx || 0) * dt;
+          b.y += (b.fanVy || 0) * dt;
+          if (b.body) {
+            b.body.moves = false;
+            b.body.reset(b.x, b.y);
+          }
+        }
         b.life -= delta;
         if (b.iframes > 0) b.iframes -= delta;
         if (b.kama && b.body && b.body.velocity) b.setRotation(Math.atan2(b.body.velocity.y, b.body.velocity.x));
