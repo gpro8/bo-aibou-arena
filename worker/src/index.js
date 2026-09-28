@@ -186,9 +186,20 @@ async function loadProfile(env, uid) {
   return { name: cleanName(p.name), av: publicAv(p.av) };
 }
 
+async function baScoreOf(env, uid, mode) {
+  const rows = await kvJson(env, `ba:${mode}`);
+  const hit = Array.isArray(rows) ? rows.find((r) => r && r.uid === uid) : null;
+  return Math.max(0, Math.min(SCORE_MAX, Number(hit && hit.score) || 0));
+}
+
 async function publicMe(env, uid, rec) {
   const p = await loadProfile(env, uid);
-  return { ...publicRecord(rec), name: p.name, av: p.av };
+  const ba = {
+    easy: await baScoreOf(env, uid, "easy"),
+    long: await baScoreOf(env, uid, "long"),
+    hard: await baScoreOf(env, uid, "hard"),
+  };
+  return { ...publicRecord(rec), name: p.name, av: p.av, ba };
 }
 
 function cleanMode(m) {
@@ -197,6 +208,35 @@ function cleanMode(m) {
 
 const BA_CAP = 50;
 const SCORE_MAX = 99999;
+
+function jstMonth() {
+  return jstDay().slice(0, 7);
+}
+
+function baListKey(mode, cycle) {
+  const month = jstMonth();
+  if (cycle === "month") return { key: `ba:${mode}:${month}`, cycle: month };
+  if (/^\d{4}-\d{2}$/.test(String(cycle || ""))) {
+    return { key: `ba:${mode}:${cycle}`, cycle: String(cycle) };
+  }
+  return { key: `ba:${mode}`, cycle: "all" };
+}
+
+function upsertBaRow(raw, uid, name, av, score) {
+  const prev = Array.isArray(raw) ? raw.find((r) => r && r.uid === uid) : null;
+  const prevScore = Math.max(0, Math.min(SCORE_MAX, Number(prev && prev.score) || 0));
+  const kept = Math.max(prevScore, score);
+  const rows = Array.isArray(raw) ? raw.filter((r) => r && r.uid !== uid) : [];
+  rows.push({
+    uid,
+    name,
+    av,
+    score: kept,
+    t: kept > prevScore ? Date.now() : (prev && prev.t) || Date.now(),
+  });
+  rows.sort((a, b) => b.score - a.score || a.t - b.t);
+  return { rows: rows.slice(0, BA_CAP), kept };
+}
 
 async function kvJson(env, key) {
   if (!env.KATSUDO) return null;
@@ -521,7 +561,8 @@ async function handleNanGet(env, request) {
 async function handleBaGet(env, request) {
   const url = new URL(request.url);
   const mode = cleanMode(url.searchParams.get("mode") || "hard") || "hard";
-  const raw = await kvJson(env, `ba:${mode}`);
+  const loc = baListKey(mode, url.searchParams.get("cycle") || "all");
+  const raw = await kvJson(env, loc.key);
   const rows = Array.isArray(raw) ? raw : [];
   const out = rows.slice(0, BA_CAP).map((r, i) => ({
     n: i + 1,
@@ -529,7 +570,7 @@ async function handleBaGet(env, request) {
     av: publicAv(r && r.av),
     score: Math.max(0, Math.min(SCORE_MAX, Number(r && r.score) || 0)),
   }));
-  return json({ ok: true, mode, rows: out }, 200, env, request);
+  return json({ ok: true, mode, cycle: loc.cycle, month: jstMonth(), rows: out }, 200, env, request);
 }
 
 async function handleBaPost(env, request) {
@@ -548,21 +589,13 @@ async function handleBaPost(env, request) {
   if (!mode) return json({ ok: false, error: "mode" }, 400, env, request);
   const score = Math.max(0, Math.min(SCORE_MAX, Math.floor(Number(body.score) || 0)));
   const prof = await loadProfile(env, ses.uid);
-  const raw = await kvJson(env, `ba:${mode}`);
-  const prev = Array.isArray(raw) ? raw.find((r) => r && r.uid === ses.uid) : null;
-  const prevScore = Math.max(0, Math.min(SCORE_MAX, Number(prev && prev.score) || 0));
-  const kept = Math.max(prevScore, score);
-  const rows = Array.isArray(raw) ? raw.filter((r) => r && r.uid !== ses.uid) : [];
-  rows.push({
-    uid: ses.uid,
-    name: prof.name || "走った人",
-    av: prof.av,
-    score: kept,
-    t: kept > prevScore ? Date.now() : (prev && prev.t) || Date.now(),
-  });
-  rows.sort((a, b) => b.score - a.score || a.t - b.t);
-  await kvPut(env, `ba:${mode}`, rows.slice(0, BA_CAP));
-  return json({ ok: true, mode, score }, 200, env, request);
+  const name = prof.name || "走った人";
+  const all = upsertBaRow(await kvJson(env, `ba:${mode}`), ses.uid, name, prof.av, score);
+  await kvPut(env, `ba:${mode}`, all.rows);
+  const month = jstMonth();
+  const mon = upsertBaRow(await kvJson(env, `ba:${mode}:${month}`), ses.uid, name, prof.av, score);
+  await kvPut(env, `ba:${mode}:${month}`, mon.rows);
+  return json({ ok: true, mode, score: all.kept, month }, 200, env, request);
 }
 
 export default {

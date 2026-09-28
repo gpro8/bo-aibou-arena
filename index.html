@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.90">
+  <link rel="stylesheet" href="styles.css?v=0.4.91">
 </head>
 <body>
   <div id="app">
@@ -80,7 +80,7 @@
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
-        <li>新記録のときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
+        <li>新記録はこの難易度の自己ベスト（つなぐと順位表の自分の点も見る）。そのときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
         <li>七日の走：活動記録でつなぐ。この期間だけ（前も後も数えない）。期間中7日走ると参加。順は語った→きつい→ふつう→走った。ながいは走った。記録点は使わない。入場・参加無料。詳しくは順位表</li>
       </ul>
       <div class="row">
@@ -152,7 +152,7 @@
         <li>この期間だけ。前も後も数えない</li>
         <li>期間中に走った日が7日で参加</li>
         <li>1日1回。順は語った→きつい→ふつう</li>
-        <li>𝕏でシェアすると語った。新記録のときだけドヤる</li>
+        <li>𝕏でシェアすると語った。この難易度の自己ベストのときだけドヤる</li>
         <li>記録の点数は使わない。サーバーが今日だけを数える</li>
       </ul>
       <div class="chips" data-ba-modes>
@@ -160,6 +160,11 @@
         <button type="button" class="chip" data-ba-mode="long">ながい</button>
         <button type="button" class="chip on" data-ba-mode="hard">きつい</button>
       </div>
+      <div class="chips" data-ba-cycles>
+        <button type="button" class="chip on" data-ba-cycle="all">通算</button>
+        <button type="button" class="chip" data-ba-cycle="month">今月</button>
+      </div>
+      <p class="hint" data-ba-cycle-hint>通算は消えない。今月は今の暦月（JST）。載せた日から</p>
       <ol class="ba-list" data-ba-list></ol>
       <p class="hint" data-ba-empty>まだ誰も載っていない</p>
       <div class="row">
@@ -279,6 +284,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.90"></script>
+  <script src="app.js?v=0.4.91"></script>
 </body>
 </html>

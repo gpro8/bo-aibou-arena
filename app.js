@@ -1,4 +1,4 @@
-const VERSION = "0.4.90";
+const VERSION = "0.4.91";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -396,6 +396,46 @@ function recKey(mateId, modeId) {
   return `bo-aibou:${mateId}:${modeId}`;
 }
 
+function modeBestLocal(modeId) {
+  const all = loadBest();
+  const suffix = `:${modeId}`;
+  let n = 0;
+  Object.keys(all).forEach((k) => {
+    if (String(k).endsWith(suffix)) n = Math.max(n, Number(all[k]) || 0);
+  });
+  return n;
+}
+
+const BA_MINE = "bo-aibou-ba-mine";
+
+function loadBaMine() {
+  try {
+    const o = JSON.parse(localStorage.getItem(BA_MINE) || "{}");
+    return {
+      easy: Math.max(0, Number(o.easy) || 0),
+      long: Math.max(0, Number(o.long) || 0),
+      hard: Math.max(0, Number(o.hard) || 0),
+    };
+  } catch {
+    return { easy: 0, long: 0, hard: 0 };
+  }
+}
+
+function saveBaMine(partial) {
+  const cur = loadBaMine();
+  const next = {
+    easy: Math.max(cur.easy, Number(partial && partial.easy) || 0),
+    long: Math.max(cur.long, Number(partial && partial.long) || 0),
+    hard: Math.max(cur.hard, Number(partial && partial.hard) || 0),
+  };
+  try {
+    localStorage.setItem(BA_MINE, JSON.stringify(next));
+  } catch {
+    /* guest */
+  }
+  return next;
+}
+
 function jstDay() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -669,6 +709,7 @@ async function pullKatsudo() {
   if (got.ok) {
     mergeKatsudoRemote(got.data);
     if (got.data && got.data.name) saveKatsudoProf({ name: got.data.name, av: got.data.av || "" });
+    if (got.data && got.data.ba) saveBaMine(got.data.ba);
     const local = loadKatsudo();
     await katsudoFetch("/v1/sync", {
       method: "POST",
@@ -974,6 +1015,7 @@ function paintKatsudo() {
 }
 
 let baMode = "hard";
+let baCycle = "all";
 let baTab = "ba";
 
 function baRow(r) {
@@ -1002,6 +1044,11 @@ function paintBaChrome() {
   $$("[data-ba-tab]").forEach((b) => b.classList.toggle("on", b.dataset.baTab === baTab));
   const modes = $("[data-ba-modes]");
   if (modes) modes.classList.toggle("hidden", baTab === "nan");
+  const cycles = $("[data-ba-cycles]");
+  if (cycles) cycles.classList.toggle("hidden", baTab === "nan");
+  const ch = $("[data-ba-cycle-hint]");
+  if (ch) ch.classList.toggle("hidden", baTab === "nan");
+  $$("[data-ba-cycle]").forEach((b) => b.classList.toggle("on", b.dataset.baCycle === baCycle));
   const sh = $("[data-ba-score-hint]");
   const nh = $("[data-ba-nan-hint]");
   if (sh) sh.classList.toggle("hidden", baTab === "nan");
@@ -1103,12 +1150,12 @@ async function loadBa() {
   const list = $("[data-ba-list]");
   const empty = $("[data-ba-empty]");
   try {
-    const res = await fetch(`${KATSUDO_API}/v1/ba?mode=${baMode}`, { headers: { Accept: "application/json" } });
+    const res = await fetch(`${KATSUDO_API}/v1/ba?mode=${baMode}&cycle=${baCycle === "month" ? "month" : "all"}`, { headers: { Accept: "application/json" } });
     const data = await res.json();
     const rows = data && Array.isArray(data.rows) ? data.rows : [];
     if (list) list.innerHTML = rows.map(baRow).join("");
     if (empty) {
-      empty.textContent = "まだ誰も載っていない";
+      empty.textContent = baCycle === "month" ? "今月はまだ誰も載っていない" : "まだ誰も載っていない";
       empty.classList.toggle("hidden", rows.length > 0);
     }
   } catch {
@@ -1144,6 +1191,7 @@ async function postBa() {
     return;
   }
   if (got.ok) {
+    saveBaMine({ [mode]: score });
     showToast("載せた");
     return;
   }
@@ -1190,10 +1238,10 @@ function paintRec() {
   if (own) own.textContent = nums.length ? `自分のベスト ${Math.max(...nums)}` : "自分の記録はまだない";
   const setup = $("[data-setup-rec]");
   if (setup && state.mate) {
-    const n = Number(all[recKey(state.mate.id, state.mode.id)] || 0);
+    const n = modeBestLocal(state.mode.id);
     setup.textContent = n
-      ? `${state.mate.name} · ${state.mode.label} ベスト ${n}`
-      : `${state.mate.name} · この難易度の記録はまだない`;
+      ? `${state.mode.label} ベスト ${n}`
+      : `${state.mode.label} の記録はまだない`;
   }
 }
 
@@ -2580,22 +2628,25 @@ function bootArena() {
       const play = $(".play");
       if (play) play.classList.remove("combo");
       const score = this.liveScore(win);
-      const key = `bo-aibou:${mate.id}:${mode.id}`;
-      let best = 0;
+      const key = recKey(mate.id, mode.id);
+      let mateBest = 0;
       try {
-        best = Number(JSON.parse(localStorage.getItem("bo-aibou-best") || "{}")[key] || 0);
+        mateBest = Number(JSON.parse(localStorage.getItem("bo-aibou-best") || "{}")[key] || 0);
       } catch {
-        best = 0;
+        mateBest = 0;
       }
+      const localBest = modeBestLocal(mode.id);
+      const remoteBest = loadKatsudoSes() ? Number(loadBaMine()[mode.id] || 0) : 0;
+      const best = Math.max(localBest, remoteBest);
       const rec = score > best;
-      if (rec) {
-        try {
-          const all = JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
+      try {
+        const all = JSON.parse(localStorage.getItem("bo-aibou-best") || "{}");
+        if (score > mateBest) {
           all[key] = score;
           localStorage.setItem("bo-aibou-best", JSON.stringify(all));
-        } catch {
-          /* guest device */
         }
+      } catch {
+        /* guest device */
       }
       const hard = mode.id === "hard" || (state.mode && state.mode.id === "hard");
       const survived = Boolean(win);
@@ -2632,7 +2683,7 @@ function bootArena() {
       if (raiseBtn) raiseBtn.textContent = rec ? "𝕏でドヤる" : "𝕏でシェアする";
       const raidSec = this.raidWin && this.raidMs ? ` · 撃退 ${Math.max(1, Math.round(this.raidMs / 1000))}秒` : "";
       $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}${raidSec}`;
-      $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（ベスト ${Math.max(best, score)}）`;
+      $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（この難易度ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
       if (kEl) {
         const o = loadKatsudo();
@@ -3230,6 +3281,13 @@ function bindUi() {
     const baChip = hit(ev, "[data-ba-mode]");
     if (baChip) {
       baMode = baChip.dataset.baMode === "easy" || baChip.dataset.baMode === "long" ? baChip.dataset.baMode : "hard";
+      baTab = "ba";
+      loadBoard();
+      return;
+    }
+    const baCycleBtn = hit(ev, "[data-ba-cycle]");
+    if (baCycleBtn) {
+      baCycle = baCycleBtn.dataset.baCycle === "month" ? "month" : "all";
       baTab = "ba";
       loadBoard();
       return;
