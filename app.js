@@ -1,4 +1,4 @@
-const VERSION = "0.4.89";
+const VERSION = "0.4.90";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1561,7 +1561,7 @@ function bootArena() {
         if (bolt.iframes > 0) return;
         const guarded = this.hurtTick > 0 || this.time.now < this.wardUntil;
         if (!guarded) {
-          this.hp -= bolt.fan ? 4 : 2;
+          this.hp -= bolt.fan ? 10 : 2;
           this.hurtTick = 480;
           this.grazeStreak = 0;
           if (this.hp <= 0) this.die();
@@ -1929,7 +1929,7 @@ function bootArena() {
         foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
       }
       const late = this.left <= 15 ? 1.5 : 1;
-      if (king) foe.hp = 540 + this.lv * 28;
+      if (king) foe.hp = 780 + this.lv * 36;
       else if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
       else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
@@ -2324,7 +2324,8 @@ function bootArena() {
     hurtFoe(foe, dmg, popSize) {
       if (!foe.active) return;
       this.flash(foe);
-      if (foe.boss) dmg = Math.max(1, Math.ceil(dmg * 0.7));
+      if (foe.king) dmg = Math.max(1, Math.ceil(dmg * 0.5));
+      else if (foe.boss) dmg = Math.max(1, Math.ceil(dmg * 0.7));
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
       if (foe.boss && foe.hp > 0) {
