@@ -1,4 +1,4 @@
-const VERSION = "0.4.92";
+const VERSION = "0.4.93";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2010,6 +2010,7 @@ function bootArena() {
       foe.fanCd = king ? 2200 : 0;
       foe.fanWind = 0;
       foe.fanVolley = 0;
+      foe.oi = false;
       if (!boss && !art) {
         foe.setScale(job === "small" ? 0.72 : job === "brute" ? 1.22 : job === "well" ? 1.4 : job === "fly" || job === "rebound" ? 0.88 : 1);
         if (job === "brute") foe.setTint(0x2a1040);
@@ -2870,6 +2871,7 @@ function bootArena() {
             f.fanWind = 0;
             if (f.king) this.clearFanLane();
             f.wind = 500;
+            f.oi = false;
             f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
             f.dashOx = f.x;
             f.dashOy = f.y;
@@ -2895,11 +2897,26 @@ function bootArena() {
             const off = f.x < 12 || f.y < 12 || f.x > w - 12 || f.y > h - 12;
             if (f.dashDist >= f.dashLen || off) {
               f.lunge = 0;
-              f.dashCd = 1400;
-              if (f.king) f.fanCd = Math.min(f.fanCd || 9999, 700);
               f.body.setVelocity(0, 0);
               f.x = Phaser.Math.Clamp(f.x, 24, w - 24);
               f.y = Phaser.Math.Clamp(f.y, 24, h - 24);
+              const chase = f.king && !f.oi && this.player && f.hp > 0 && f.maxHp && f.hp <= f.maxHp * 0.5;
+              if (chase) {
+                f.oi = true;
+                f.dashCd = 0;
+                f.wind = 320;
+                f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
+                f.dashOx = f.x;
+                f.dashOy = f.y;
+                const full = this.laneLen(f.x, f.y, f.dashAng);
+                f.dashLen = Math.max(140, Math.min(full * 0.5, 260));
+                f.dashDist = 0;
+                f.setTint(0xf8b500);
+              } else {
+                f.oi = false;
+                f.dashCd = 1400;
+                if (f.king) f.fanCd = Math.min(f.fanCd || 9999, 700);
+              }
             }
           } else if (this.wellSucking()) {
             f.body.setVelocity(0, 0);
