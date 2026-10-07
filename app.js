@@ -1,4 +1,4 @@
-const VERSION = "0.4.91";
+const VERSION = "0.4.92";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1648,6 +1648,7 @@ function bootArena() {
       this.raidAt = 0;
       this.raidMs = 0;
       this.raidChests = 0;
+      this.raidWellAcc = 0;
       this.powerUntil = 0;
       this.clockPlayed = null;
       this.surviveLocked = false;
@@ -1931,10 +1932,11 @@ function bootArena() {
       if (p < 0.78) return Math.random() < 0.55 ? "rebound" : "fly";
       return Math.random() < 0.45 ? "well" : Math.random() < 0.5 ? "rebound" : "fly";
     }
-    spawn(kind) {
+    spawn(kind, opts) {
       const king = kind === "king";
       const boss = kind === "boss" || king;
-      if (!boss && this.raid) return;
+      const raidWell = !!(opts && opts.raidWell);
+      if (!boss && this.raid && !raidWell) return;
       if (!boss && this.foes.countActive(true) >= 16) return;
       let job = king ? "king" : boss ? "boss" : kind && kind !== "boss" ? kind : this.pickJob();
       if (!boss && job === "well") {
@@ -1942,7 +1944,10 @@ function bootArena() {
         this.foes.children.iterate((f) => {
           if (f && f.active && f.job === "well") hasWell = true;
         });
-        if (hasWell) job = mode.id === "easy" ? "thick" : "rebound";
+        if (hasWell) {
+          if (raidWell) return;
+          job = mode.id === "easy" ? "thick" : "rebound";
+        }
       }
       const w = this.scale.width;
       const h = this.scale.height;
@@ -2731,6 +2736,8 @@ function bootArena() {
         if (b && b.active) b.destroy();
       });
       this.spawn("king");
+      this.raidWellAcc = 0;
+      this.spawn("well", { raidWell: true });
       const lab = $(".bosslabel");
       if (lab) lab.textContent = "Moogredon";
       const av = $(".bossava");
@@ -2814,6 +2821,18 @@ function bootArena() {
         if (this.chestAcc > 16000) {
           this.chestAcc = 0;
           this.spawnChest();
+        }
+        let hasWell = false;
+        this.foes.children.iterate((f) => {
+          if (f && f.active && f.job === "well") hasWell = true;
+        });
+        if (hasWell) this.raidWellAcc = 0;
+        else {
+          this.raidWellAcc = (this.raidWellAcc || 0) + delta;
+          if (this.raidWellAcc > 8000) {
+            this.raidWellAcc = 0;
+            this.spawn("well", { raidWell: true });
+          }
         }
       } else if (this.chestAcc > 12000) {
         this.chestAcc = 0;
