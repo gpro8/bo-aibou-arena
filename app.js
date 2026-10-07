@@ -1,4 +1,4 @@
-const VERSION = "0.4.93";
+const VERSION = "0.4.94";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2378,7 +2378,7 @@ function bootArena() {
     hurtFoe(foe, dmg, popSize) {
       if (!foe.active) return;
       this.flash(foe);
-      if (foe.king) dmg = Math.max(1, Math.ceil(dmg * 0.5));
+      if (foe.king) dmg = Math.max(1, Math.ceil(dmg * 0.42));
       else if (foe.boss) dmg = Math.max(1, Math.ceil(dmg * 0.7));
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
