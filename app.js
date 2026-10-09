@@ -1,4 +1,4 @@
-const VERSION = "0.4.95";
+const VERSION = "0.4.96";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1982,7 +1982,7 @@ function bootArena() {
         foe.body.setCircle(r, boss ? 4 : 2, boss ? 4 : 2);
       }
       const late = this.left <= 15 ? 1.5 : 1;
-      if (king) foe.hp = 780 + this.lv * 36;
+      if (king) foe.hp = 840 + this.lv * 38;
       else if (boss) foe.hp = 460 + this.lv * 24;
       else if (job === "small") foe.hp = Math.ceil((10 + (this.lv - 1)) * late);
       else if (job === "brute") foe.hp = Math.ceil((40 + (this.lv - 1) * 3) * late);
