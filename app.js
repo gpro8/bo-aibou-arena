@@ -2001,6 +2001,7 @@ function bootArena() {
           markSeenLocal(stem);
         }
       }
+      // Walk 96. Dash stays 520 * pace. 親玉 walk stays 80.
       foe.spd = (king ? 96 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
       foe.wind = 0;
