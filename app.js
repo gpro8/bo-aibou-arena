@@ -1,4 +1,4 @@
-const VERSION = "0.4.96";
+const VERSION = "0.4.97";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2067,12 +2067,43 @@ function bootArena() {
         b.body.setVelocity(vx, vy);
       }
     }
+    fireEmber(from) {
+      if (!from || !from.active) return;
+      const ang = (from.fanAng || 0) + (from.emberOff || 0);
+      const dist = from.emberDist || 180;
+      const ox = from.fanOx ?? from.x;
+      const oy = from.fanOy ?? from.y;
+      const b = this.physics.add.sprite(ox + Math.cos(ang) * dist, oy + Math.sin(ang) * dist, "mark-fan");
+      b.setScale(1.2);
+      b.fan = true;
+      b.fire = true;
+      b.ember = true;
+      b.fanVx = 0;
+      b.fanVy = 0;
+      b.setDepth(7);
+      b.life = 800;
+      b.bounce = 0;
+      b.iframes = 0;
+      this.bolts.add(b);
+      if (b.body) {
+        b.body.setAllowGravity(false);
+        b.body.setCircle(14, 2, 2);
+        b.body.moves = true;
+        b.body.setVelocity(0, 0);
+      }
+    }
     fireFan(from, wide) {
       const ang = from.fanAng || 0;
       const spread = wide ? Math.PI / 4.5 : Math.PI / 6;
-      this.fireFanBolt(from, ang);
+      if (wide) {
+        this.fireFanBolt(from, ang);
+        this.fireFanBolt(from, ang - spread);
+        this.fireFanBolt(from, ang + spread);
+        return;
+      }
       this.fireFanBolt(from, ang - spread);
       this.fireFanBolt(from, ang + spread);
+      this.fireEmber(from);
     }
     paintFanLane(f) {
       if (!this.fanLane) {
@@ -2087,7 +2118,7 @@ function bootArena() {
       const len = 420;
       const spread = Math.PI / 6;
       const flash = Math.floor(this.time.now / 80) % 2 === 1;
-      [-spread, 0, spread].forEach((off) => {
+      [-spread, spread].forEach((off) => {
         const a = ang + off;
         const x2 = ox + Math.cos(a) * len;
         const y2 = oy + Math.sin(a) * len;
@@ -2102,6 +2133,14 @@ function bootArena() {
         g.lineTo(x2, y2);
         g.strokePath();
       });
+      const gap = ang + (f.emberOff || -spread / 2);
+      const sit = f.emberDist || 180;
+      const sx = ox + Math.cos(gap) * sit;
+      const sy = oy + Math.sin(gap) * sit;
+      g.lineStyle(3, 0xf8b500, flash ? 0.95 : 0.4);
+      g.strokeCircle(sx, sy, 16);
+      g.fillStyle(0x6a4c9c, flash ? 0.34 : 0.14);
+      g.fillCircle(sx, sy, 14);
     }
     clearFanLane() {
       if (this.fanLane) this.fanLane.clear();
@@ -2126,6 +2165,11 @@ function bootArena() {
         f.fanAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
         f.fanOx = f.x;
         f.fanOy = f.y;
+        const spread = Math.PI / 6;
+        f.emberOff = Math.random() < 0.5 ? -spread / 2 : spread / 2;
+        const gap = f.fanAng + f.emberOff;
+        const along = (this.player.x - f.x) * Math.cos(gap) + (this.player.y - f.y) * Math.sin(gap);
+        f.emberDist = Math.max(150, Math.min(300, along));
         f.fanWind = 400;
         f.body.setVelocity(0, 0);
         this.paintFanLane(f);
@@ -3063,6 +3107,7 @@ function bootArena() {
           const dt = delta / 1000;
           b.x += (b.fanVx || 0) * dt;
           b.y += (b.fanVy || 0) * dt;
+          if (b.ember) b.setScale(1.12 + 0.1 * Math.sin(this.time.now / 90));
           if (b.body) {
             b.body.moves = false;
             b.body.reset(b.x, b.y);
