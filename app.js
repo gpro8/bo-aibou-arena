@@ -1,4 +1,4 @@
-const VERSION = "0.4.94";
+const VERSION = "0.4.95";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2001,7 +2001,7 @@ function bootArena() {
           markSeenLocal(stem);
         }
       }
-      foe.spd = (king ? 88 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
+      foe.spd = (king ? 96 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
       foe.hajiki = false;
       foe.wind = 0;
       foe.lunge = 0;
