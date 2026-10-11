@@ -149,15 +149,31 @@ html:-webkit-full-screen #raise-ov * {
   object-fit: contain;
   aspect-ratio: 1080 / 1350;
 }
-#bosshp {
+#bossbars {
   position: absolute;
   left: 50%;
-  right: auto;
   bottom: calc(12px + var(--safe-b));
   transform: translateX(-50%);
   z-index: 5;
   width: min(64vw, 340px);
-  min-width: 200px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+#bossbars.pair { width: min(94vw, 560px); }
+#bosshp, #moogrehp {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  z-index: 5;
+  flex: 1;
+  width: auto;
+  min-width: 0;
   padding: 0;
   background: transparent;
   border: none;
@@ -167,7 +183,7 @@ html:-webkit-full-screen #raise-ov * {
   align-items: center;
   gap: 8px;
 }
-#bosshp .bossava {
+#bosshp .bossava, #moogrehp .bossava {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -176,14 +192,14 @@ html:-webkit-full-screen #raise-ov * {
   flex-shrink: 0;
   background: rgba(18, 16, 14, 0.35);
 }
-#bosshp .bossmeta {
+#bosshp .bossmeta, #moogrehp .bossmeta {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-#bosshp .bosslabel {
+#bosshp .bosslabel, #moogrehp .bosslabel {
   display: inline-block;
   width: fit-content;
   max-width: 100%;
@@ -200,22 +216,22 @@ html:-webkit-full-screen #raise-ov * {
   -webkit-text-fill-color: #12100e;
   text-shadow: none;
 }
-body.yang #bosshp .bosslabel {
+body.yang #bosshp .bosslabel, body.yang #moogrehp .bosslabel {
   background: #fff8ea;
   color: #12100e;
   -webkit-text-fill-color: #12100e;
   text-shadow: none;
 }
-body.yin #bosshp .bosslabel {
+body.yin #bosshp .bosslabel, body.yin #moogrehp .bosslabel {
   background: #1b1815;
   color: #f8b500;
   -webkit-text-fill-color: #f8b500;
   text-shadow: none;
 }
-#bosshp.hidden { display: none !important; }
-#bosshp.hit .hpbar { box-shadow: 0 0 12px #f8b500; }
-#bosshp.rage .hpbar { box-shadow: 0 0 14px #ff3d8a; }
-#bosshp .hpbar {
+#bosshp.hidden, #moogrehp.hidden { display: none !important; }
+#bosshp.hit .hpbar, #moogrehp.hit .hpbar { box-shadow: 0 0 12px #f8b500; }
+#bosshp.rage .hpbar, #moogrehp.rage .hpbar { box-shadow: 0 0 14px #ff3d8a; }
+#bosshp .hpbar, #moogrehp .hpbar {
   width: 100%;
   flex: 1 1 auto;
   height: 10px;
@@ -649,10 +665,8 @@ h2 { font-size: 13px; margin: 8px 0 0; color: var(--muted); font-weight: 600; }
   left: auto;
   right: calc(12px + var(--safe-r));
 }
-#bosshp.swap {
-  left: 50%;
-  right: auto;
-}
+#bossbars.pair .bossava { width: 28px; height: 28px; }
+#bossbars.pair .bosslabel { font-size: 10px; padding: 1px 6px; }
 #stick-ov {
   position: fixed;
   inset: 0;

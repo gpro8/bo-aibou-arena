@@ -1,4 +1,4 @@
-const VERSION = "0.4.100";
+const VERSION = "0.4.101";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -120,13 +120,13 @@ const state = {
 };
 
 function paintBossLabel() {
-  const el = $(".bosslabel");
-  if (!el) return;
   const yang = state.stage && state.stage.id === "yang";
   const col = yang ? "#3a2e22" : "#f8b500";
-  el.style.setProperty("color", col, "important");
-  el.style.setProperty("-webkit-text-fill-color", col, "important");
-  el.style.setProperty("text-shadow", "none", "important");
+  $$(".bosslabel").forEach((el) => {
+    el.style.setProperty("color", col, "important");
+    el.style.setProperty("-webkit-text-fill-color", col, "important");
+    el.style.setProperty("text-shadow", "none", "important");
+  });
 }
 
 function themeId() {
@@ -180,7 +180,7 @@ function show(name) {
     loadBoard();
   }
   if (name === "play") {
-    ["#result-ov", "#raise-ov", "#pause-ov", "#raid-ov", "#bosshp"].forEach((s) => {
+    ["#result-ov", "#raise-ov", "#pause-ov", "#raid-ov", "#bosshp", "#moogrehp"].forEach((s) => {
       const el = $(s);
       if (el) el.classList.add("hidden");
     });
@@ -203,6 +203,8 @@ function show(name) {
     if (result) result.classList.add("hidden");
     if (raise) raise.classList.add("hidden");
     if (boss) boss.classList.add("hidden");
+    const moogreBar = $("#moogrehp");
+    if (moogreBar) moogreBar.classList.add("hidden");
     const stickOv = $("#stick-ov");
     if (stickOv) stickOv.classList.add("hidden");
   }
@@ -1652,6 +1654,8 @@ function bootArena() {
       this.raidDown = 0;
       this.raidAt = 0;
       this.raidMs = 0;
+      this.raidCarry = false;
+      this.kingFell = false;
       this.raidChests = 0;
       this.raidWellAcc = 0;
       this.powerUntil = 0;
@@ -2433,7 +2437,7 @@ function bootArena() {
       foe.hp -= dmg;
       this.pop(foe.x, foe.y, dmg, popSize ? "#ff9a3a" : undefined, popSize);
       if (foe.boss && foe.hp > 0) {
-        const bar = $("#bosshp");
+        const bar = this.bossBar(foe);
         if (bar) {
           bar.classList.remove("hit");
           void bar.offsetWidth;
@@ -2474,7 +2478,10 @@ function bootArena() {
         if (boss) {
           this.clearDashLane();
           this.bossDown += 1;
-          if (king) {
+          const kingStill = king ? false : !!this.livingBoss(true);
+          if (king) this.kingFell = true;
+          const cleared = this.raid && (king ? !this.raidCarry || !this.livingBoss(false) : this.kingFell && !kingStill);
+          if (cleared) {
             this.raidDown = 1;
             this.raidWin = true;
             this.raidMs = Math.max(1, this.time.now - (this.raidAt || this.time.now));
@@ -2489,10 +2496,10 @@ function bootArena() {
           this.callout("倒した");
           this.pop(x, y - 18, "親玉 +12");
           this.startHitStop(560);
-          this.wardPending = !king;
+          this.wardPending = !king && !cleared;
           if (this.hasSprite && this.player) this.player.setTint(0xf8b500);
-          const bar = $("#bosshp");
-          if (bar) bar.classList.add("hidden");
+          const deadBar = king ? $("#bosshp") : (this.livingBoss(true) ? $("#moogrehp") : $("#bosshp"));
+          if (deadBar) deadBar.classList.add("hidden");
         }
       }
     }
@@ -2788,8 +2795,59 @@ function bootArena() {
         f.maxHp = Math.ceil(f.maxHp * 1.4);
       });
     }
+    livingBoss(king) {
+      let found = null;
+      this.foes.children.iterate((f) => {
+        if (!f || !f.active || f.hp <= 0) return;
+        if (king ? f.king : (f.boss && !f.king)) found = f;
+      });
+      return found;
+    }
+    bossBar(foe) {
+      if (foe && foe.king) return $("#bosshp");
+      if (this.livingBoss(true)) return $("#moogrehp");
+      return $("#bosshp");
+    }
+    paintBossBars() {
+      const king = this.livingBoss(true);
+      const moogre = this.livingBoss(false);
+      const pair = !!(king && moogre);
+      const wrap = $("#bossbars");
+      if (wrap) wrap.classList.toggle("pair", pair);
+      const primary = king || moogre;
+      const kingBar = $("#bosshp");
+      const moogreBar = $("#moogrehp");
+      if (kingBar) {
+        kingBar.classList.toggle("hidden", !primary);
+        if (!primary) kingBar.classList.remove("rage");
+        if (primary) {
+          const lab = kingBar.querySelector(".bosslabel");
+          if (lab) lab.textContent = primary.king ? "Moogredon" : "Moogre";
+          const av = kingBar.querySelector(".bossava");
+          if (av) av.src = primary.king ? `art/foes/moogredon/avatar.png?v=${VERSION}` : `art/foes/gyuki/avatar.png?v=${VERSION}`;
+          const fill = kingBar.querySelector("[data-boss-hpbar]");
+          if (fill && primary.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (primary.hp / primary.maxHp) * 100))}%`;
+          kingBar.classList.toggle("rage", !!(primary.raged && primary.hp <= primary.maxHp * 0.5));
+          paintBossLabel();
+        }
+      }
+      if (moogreBar) {
+        moogreBar.classList.toggle("hidden", !pair);
+        if (pair && moogre && moogre.maxHp) {
+          const fill = moogreBar.querySelector("[data-moogre-hpbar]");
+          if (fill) fill.style.width = `${Math.max(0, Math.min(100, (moogre.hp / moogre.maxHp) * 100))}%`;
+          moogreBar.classList.toggle("rage", !!(moogre.raged && moogre.hp <= moogre.maxHp * 0.5));
+        }
+      }
+    }
     askRaid() {
       const ov = $("#raid-ov");
+      const hint = $("[data-raid-hint]");
+      if (hint) {
+        hint.textContent = this.livingBoss(false)
+          ? "やめると生き延びた。親玉が生きていれば残る。両方倒すと終わり"
+          : "やめると生き延びた。闘うと時間なし。負けるとやられた";
+      }
       if (ov) ov.classList.remove("hidden");
       freezeScene();
     }
@@ -2799,26 +2857,39 @@ function bootArena() {
       this.raidChests = 0;
       this.chestAcc = 0;
       this.clearDashLane();
+      const kept = [];
       (this.foes.getChildren ? this.foes.getChildren() : []).slice().forEach((f) => {
-        if (f && f.active) f.destroy();
+        if (f && f.active && f.boss && !f.king && f.hp > 0) kept.push(f);
+        else if (f && f.active) f.destroy();
+      });
+      this.raidCarry = kept.length > 0;
+      this.kingFell = false;
+      kept.forEach((m) => {
+        m.lunge = 0;
+        m.wind = 0;
+        m.dashCd = 500;
+        if (m.body) m.body.setVelocity(0, 0);
       });
       (this.bolts.getChildren ? this.bolts.getChildren() : []).slice().forEach((b) => {
         if (b && b.active) b.destroy();
       });
       this.spawn("king");
+      const king = this.livingBoss(true);
+      kept.forEach((m) => {
+        if (!king || !m.active) return;
+        const d = Phaser.Math.Distance.Between(m.x, m.y, king.x, king.y);
+        if (d < 180) {
+          const ang = Math.atan2(m.y - king.y, m.x - king.x) || 1.2;
+          const w = this.scale.width;
+          const h = this.scale.height;
+          m.x = Phaser.Math.Clamp(king.x + Math.cos(ang) * 200, 48, w - 48);
+          m.y = Phaser.Math.Clamp(king.y + Math.sin(ang) * 200, 48, h - 48);
+          if (m.body) m.body.reset(m.x, m.y);
+        }
+      });
       this.raidWellAcc = 0;
       this.spawn("well", { raidWell: true });
-      const lab = $(".bosslabel");
-      if (lab) lab.textContent = "Moogredon";
-      const av = $(".bossava");
-      if (av) av.src = `art/foes/moogredon/avatar.png?v=${VERSION}`;
-      const bar = $("#bosshp");
-      if (bar) {
-        bar.classList.remove("hidden", "rage");
-        const hp = $("[data-boss-hpbar]");
-        if (hp) hp.style.width = "100%";
-      }
-      paintBossLabel();
+      this.paintBossBars();
       this.callout("大妖怪");
       if (this.cameras && this.cameras.main) this.cameras.main.shake(260, 0.014);
       buzz([30, 40, 90, 40, 90]);
@@ -3156,24 +3227,7 @@ function bootArena() {
           g.y += (this.player.y - g.y) * 0.16;
         }
       });
-      let boss = null;
-      this.foes.children.iterate((f) => {
-        if (f && f.boss) boss = f;
-      });
-      const bar = $("#bosshp");
-      const fill = $("[data-boss-hpbar]");
-      if (bar) {
-        bar.classList.toggle("hidden", !boss);
-        if (!boss) bar.classList.remove("rage");
-        if (boss) paintBossLabel();
-        if (boss) {
-          const lab = $(".bosslabel");
-          if (lab) lab.textContent = boss.king ? "Moogredon" : "Moogre";
-          const av = $(".bossava");
-          if (av && !boss.king) av.src = `art/foes/gyuki/avatar.png?v=${VERSION}`;
-        }
-        if (boss && fill && boss.maxHp) fill.style.width = `${Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100))}%`;
-      }
+      this.paintBossBars();
       if (this.ward && this.ward.active) {
         if ((this.hurtTick > 0 || (this.time && this.time.now < this.wardUntil)) && this.player) {
           this.ward.x = this.player.x;
