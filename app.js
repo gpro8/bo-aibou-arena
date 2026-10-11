@@ -1,4 +1,4 @@
-const VERSION = "0.4.97";
+const VERSION = "0.4.98";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2953,8 +2953,7 @@ function bootArena() {
                 f.dashAng = Math.atan2(this.player.y - f.y, this.player.x - f.x);
                 f.dashOx = f.x;
                 f.dashOy = f.y;
-                const full = this.laneLen(f.x, f.y, f.dashAng);
-                f.dashLen = Math.max(140, Math.min(full * 0.5, 260));
+                f.dashLen = this.laneLen(f.x, f.y, f.dashAng);
                 f.dashDist = 0;
                 f.setTint(0xf8b500);
               } else {
