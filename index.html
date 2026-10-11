@@ -38,7 +38,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.99">
+  <link rel="stylesheet" href="styles.css?v=0.4.100">
 </head>
 <body>
   <div id="app">
@@ -80,7 +80,7 @@
         <li>「来るぞ」は合図。敵が少し増える。速さは変わらない</li>
         <li>PCはスペースで一時停止 / つづける。Escは全画面をやめる</li>
         <li>もういちどは同じ相棒ですぐ走る</li>
-        <li>新記録はこの難易度の自己ベスト（つなぐと順位表の自分の点も見る）。そのときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
+        <li>新記録はこの難易度の自己ベスト（つなぐと順位表の自分の点も見る）。撃退の自己ベストの秒も誉。点は増えない。そのときだけ𝕏でドヤる。ほかは𝕏でシェアする。つなぐと順位表に載せる（名前と姿。番号は出ない。誉のみ）</li>
         <li>七日の走：活動記録でつなぐ。この期間だけ（前も後も数えない）。期間中7日走ると参加。順は語った→きつい→ふつう→走った。ながいは走った。記録点は使わない。入場・参加無料。詳しくは順位表</li>
       </ul>
       <div class="row">
@@ -259,6 +259,7 @@
         <p class="thanks" data-thanks></p>
         <img class="flag-card hidden" data-flag-card alt="">
         <p class="hint" data-result-line></p>
+        <p class="hint hidden" data-result-raid></p>
         <p class="hint" data-result-rec></p>
         <p class="hint hidden" data-result-katsudo></p>
         <div class="col">
@@ -284,6 +285,6 @@
     <p data-toast-msg></p>
   </div>
   <script src="vendor/phaser.min.js"></script>
-  <script src="app.js?v=0.4.99"></script>
+  <script src="app.js?v=0.4.100"></script>
 </body>
 </html>

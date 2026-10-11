@@ -1,4 +1,4 @@
-const VERSION = "0.4.99";
+const VERSION = "0.4.100";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1261,16 +1261,16 @@ function runHeadline(run) {
 }
 
 function raiseText(run) {
-  return [
+  const lines = [
     "相棒あそび",
     `${run.name} ${runHeadline(run)}`,
     `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
-    "入場・参加無料",
-    "活動記録でつなぐ",
-    PLAY_URL,
-    "",
-    "#相棒あそび #BushiDAO",
-  ].join("\n");
+  ];
+  if (run.raidWin && run.raidSec) {
+    lines.push(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`);
+  }
+  lines.push("入場・参加無料", "活動記録でつなぐ", PLAY_URL, "", "#相棒あそび #BushiDAO");
+  return lines.join("\n");
 }
 
 async function paintFlagCard(run) {
@@ -1316,6 +1316,11 @@ async function paintFlagCard(run) {
   ctx.fillStyle = run.rec ? "#f8b500" : "#9a8f82";
   ctx.font = "700 40px sans-serif";
   ctx.fillText(run.rec ? `新記録 ${run.score}` : `記録 ${run.score}`, 540, 930);
+  if (run.raidWin && run.raidSec) {
+    ctx.fillStyle = run.raidBest ? "#f8b500" : "#9a8f82";
+    ctx.font = "700 36px sans-serif";
+    ctx.fillText(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`, 540, 990);
+  }
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
@@ -2704,7 +2709,12 @@ function bootArena() {
       const stampedHard = Boolean(survived && hard && !this.hardStamped);
       if (stampedHard) this.hardStamped = true;
       const played = this.clockPlayed || (stampedHard ? stampHardWin() : stampPlayDay(mode.id));
-      if (this.raidWin) {
+      let raidSec = 0;
+      let raidBest = false;
+      if (this.raidWin && this.raidMs) {
+        const prev = loadKatsudo().raidBestMs || 0;
+        raidSec = Math.max(1, Math.round(this.raidMs / 1000));
+        raidBest = !prev || this.raidMs < prev;
         const o = stampRaidKill(this.raidMs);
         showToast(o.raidKills >= 3 ? "称賛" : "讃える");
       }
@@ -2720,6 +2730,8 @@ function bootArena() {
         hard,
         mode: mode.id,
         raidWin: Boolean(this.raidWin),
+        raidSec,
+        raidBest,
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = this.raidWin ? "大妖怪を倒した" : survived ? "生き延びた" : "やられた";
@@ -2731,9 +2743,21 @@ function bootArena() {
             ? "おめでとうございます"
             : "まだいける。もういちど";
       const raiseBtn = $("[data-raise]");
-      if (raiseBtn) raiseBtn.textContent = rec ? "𝕏でドヤる" : "𝕏でシェアする";
-      const raidSec = this.raidWin && this.raidMs ? ` · 撃退 ${Math.max(1, Math.round(this.raidMs / 1000))}秒` : "";
-      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}${raidSec}`;
+      if (raiseBtn) raiseBtn.textContent = rec || raidBest ? "𝕏でドヤる" : "𝕏でシェアする";
+      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
+      const raidLine = $("[data-result-raid]");
+      if (raidLine) {
+        if (this.raidWin && raidSec) {
+          const bestSec = Math.max(1, Math.round((loadKatsudo().raidBestMs || this.raidMs) / 1000));
+          raidLine.textContent = raidBest ? `撃退自己ベスト ${raidSec}秒` : `撃退 ${raidSec}秒（自己ベスト ${bestSec}秒）`;
+          raidLine.classList.toggle("thanks", raidBest);
+          raidLine.classList.remove("hidden");
+        } else {
+          raidLine.textContent = "";
+          raidLine.classList.add("hidden");
+          raidLine.classList.remove("thanks");
+        }
+      }
       $("[data-result-rec]").textContent = rec ? `新記録 ${score}` : `記録 ${score}（この難易度ベスト ${Math.max(best, score)}）`;
       const kEl = $("[data-result-katsudo]");
       if (kEl) {
