@@ -1,4 +1,4 @@
-const VERSION = "0.4.101";
+const VERSION = "0.4.102";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1262,12 +1262,19 @@ function runHeadline(run) {
   return "やられた";
 }
 
+function modeLabel(id) {
+  const m = MODES.find((x) => x.id === id);
+  return m ? m.label : "";
+}
+
 function raiseText(run) {
+  const field = modeLabel(run.mode);
   const lines = [
     "相棒あそび",
     `${run.name} ${runHeadline(run)}`,
-    `倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`,
   ];
+  if (field) lines.push(field);
+  lines.push(`倒 ${run.kills} · 連 ${run.combo} · lv ${run.lv}${run.rec ? " · 新記録" : ""}`);
   if (run.raidWin && run.raidSec) {
     lines.push(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`);
   }
@@ -1312,16 +1319,22 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#f8b500";
   ctx.font = "700 48px sans-serif";
   ctx.fillText(run.name, 540, 780);
+  const field = modeLabel(run.mode);
+  if (field) {
+    ctx.fillStyle = "#f8b500";
+    ctx.font = "700 32px sans-serif";
+    ctx.fillText(field, 540, 836);
+  }
   ctx.fillStyle = "#f3eadc";
   ctx.font = "600 36px sans-serif";
-  ctx.fillText(`倒 ${run.kills}   連 ${run.combo}   lv ${run.lv}`, 540, 860);
+  ctx.fillText(`倒 ${run.kills}   連 ${run.combo}   lv ${run.lv}`, 540, 900);
   ctx.fillStyle = run.rec ? "#f8b500" : "#9a8f82";
   ctx.font = "700 40px sans-serif";
-  ctx.fillText(run.rec ? `新記録 ${run.score}` : `記録 ${run.score}`, 540, 930);
+  ctx.fillText(run.rec ? `新記録 ${run.score}` : `記録 ${run.score}`, 540, 970);
   if (run.raidWin && run.raidSec) {
     ctx.fillStyle = run.raidBest ? "#f8b500" : "#9a8f82";
     ctx.font = "700 36px sans-serif";
-    ctx.fillText(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`, 540, 990);
+    ctx.fillText(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`, 540, 1030);
   }
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
@@ -2751,7 +2764,7 @@ function bootArena() {
             : "まだいける。もういちど";
       const raiseBtn = $("[data-raise]");
       if (raiseBtn) raiseBtn.textContent = rec || raidBest ? "𝕏でドヤる" : "𝕏でシェアする";
-      $("[data-result-line]").textContent = `${mate.name} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
+      $("[data-result-line]").textContent = `${mate.name} · ${modeLabel(mode.id)} · lv ${this.lv} · 倒 ${this.kills} · 連 ${this.maxCombo}`;
       const raidLine = $("[data-result-raid]");
       if (raidLine) {
         if (this.raidWin && raidSec) {
