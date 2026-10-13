@@ -40,7 +40,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.103">
+  <link rel="stylesheet" href="styles.css?v=0.4.104">
 </head>
 <body>
   <div id="app">
@@ -61,6 +61,8 @@
         <a class="btn ghost" href="https://gpro8.github.io/bo-aibou-zukan/" target="_blank" rel="noopener noreferrer">相棒図鑑</a>
         <a class="btn ghost" href="./teki/">敵図鑑</a>
       </div>
+      <button type="button" class="btn ghost hidden" data-install>ホームに追加</button>
+      <p class="hint hidden" data-install-hint></p>
       <p class="ver" data-ver></p>
     </section>
 
@@ -297,12 +299,17 @@
   </div>
   <script src="vendor/phaser.min.js"></script>
   <script>
+  window.__installPrompt = null;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    window.__installPrompt = e;
+    var btn = document.querySelector("[data-install]");
+    if (btn) btn.classList.remove("hidden");
+  });
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
-    });
+    navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
   }
   </script>
-  <script src="app.js?v=0.4.103"></script>
+  <script src="app.js?v=0.4.104"></script>
 </body>
 </html>

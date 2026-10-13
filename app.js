@@ -1,4 +1,4 @@
-const VERSION = "0.4.103";
+const VERSION = "0.4.104";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -3389,6 +3389,28 @@ function bindUi() {
     themeBtn.addEventListener("click", toggle);
   }
   window.addEventListener("resize", syncPlayGate);
+  const installBtn = $("[data-install]");
+  const installHint = $("[data-install-hint]");
+  const installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (!installed && installHint) {
+    const ua = navigator.userAgent || "";
+    installHint.textContent = /Discord/i.test(ua)
+      ? "Discordの中では出ない。ブラウザで開く"
+      : /iPhone|iPad|iPod/.test(ua)
+        ? "共有 → ホーム画面に追加"
+        : "Chromeの⋮ → ホーム画面に追加";
+    installHint.classList.remove("hidden");
+  }
+  if (installBtn && window.__installPrompt) installBtn.classList.remove("hidden");
+  if (installBtn) {
+    installBtn.addEventListener("click", () => {
+      const ev = window.__installPrompt;
+      if (!ev) return;
+      ev.prompt();
+      window.__installPrompt = null;
+      installBtn.classList.add("hidden");
+    });
+  }
   window.addEventListener("orientationchange", () => setTimeout(syncPlayGate, 200));
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", fitPlay);
