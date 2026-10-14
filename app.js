@@ -1,4 +1,4 @@
-const VERSION = "0.4.104";
+const VERSION = "0.4.105";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -469,13 +469,13 @@ function streakCount(days, today) {
 }
 
 function weekDays(today) {
-  return [6, 5, 4, 3, 2, 1, 0].map((i) => shiftDay(today, -i));
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => shiftDay(today, -i));
 }
 
 function streakHonor(n) {
   if (n >= 30) return "ひと月つづいた";
   if (n >= 14) return "二週間つづいた";
-  if (n >= 7) return "一週間つづいた";
+  if (n >= 7) return "七日走り続けた";
   if (n >= 3) return "火がついた";
   if (n >= 1) return "今日も走った";
   return "";
@@ -1278,6 +1278,7 @@ function raiseText(run) {
   if (run.raidWin && run.raidSec) {
     lines.push(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`);
   }
+  if (run.streak >= 7) lines.push(streakHonor(run.streak));
   lines.push("入場・参加無料", "活動記録でつなぐ", PLAY_URL, "", "#相棒あそび #BushiDAO");
   return lines.join("\n");
 }
@@ -1339,7 +1340,9 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
-  ctx.fillText("希望に向かって駆け抜ける", 540, 1230);
+  const kept = run.streak >= 7 ? streakHonor(run.streak) : "";
+  ctx.fillStyle = kept ? "#f8b500" : "#9a8f82";
+  ctx.fillText(kept || "希望に向かって駆け抜ける", 540, 1230);
   ctx.fillStyle = "#3a342c";
   ctx.fillRect(980, 80, 8, 64);
   ctx.fillStyle = "#f8b500";
@@ -2752,6 +2755,7 @@ function bootArena() {
         raidWin: Boolean(this.raidWin),
         raidSec,
         raidBest,
+        streak: played && played.streak ? played.streak : 0,
       };
       if (state.game) freezeScene();
       $("[data-result-title]").textContent = this.raidWin ? "大妖怪を倒した" : survived ? "生き延びた" : "やられた";
