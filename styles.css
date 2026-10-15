@@ -320,6 +320,8 @@ body.playing #app {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: transparent;
+  text-decoration: none;
 }
 .dc-ask {
   background: var(--bg);

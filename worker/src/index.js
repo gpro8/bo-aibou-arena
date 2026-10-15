@@ -283,6 +283,11 @@ async function rate(env, key, max, ttl) {
   return n <= max;
 }
 
+function cleanHand(raw) {
+  const s = String(raw || "").toLowerCase();
+  return /^[a-f0-9]{32}$/.test(s) ? s : "";
+}
+
 function oauthReady(env) {
   return Boolean(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
 }
@@ -290,8 +295,9 @@ function oauthReady(env) {
 async function handleStart(url, env) {
   const play = playUrl(env);
   if (!oauthReady(env)) return redirect(`${play}?katsudo=off`);
+  const hand = cleanHand(url.searchParams.get("hand"));
   const state = bytesHex(16);
-  await kvPut(env, `st:${state}`, { t: Date.now() }, STATE_TTL);
+  await kvPut(env, `st:${state}`, hand ? { t: Date.now(), hand } : { t: Date.now() }, STATE_TTL);
   const params = new URLSearchParams({
     client_id: env.DISCORD_CLIENT_ID,
     redirect_uri: callbackUrl(url),
@@ -339,6 +345,8 @@ async function handleCallback(url, env) {
   await saveProfile(env, uid, me);
   const session = bytesHex(24);
   await kvPut(env, `ses:${session}`, { uid }, SES_TTL);
+  const hand = cleanHand(st && st.hand);
+  if (hand) await kvPut(env, `hd:${hand}`, { tok: session }, STATE_TTL);
   const rec = await loadUser(env, uid);
   await saveUser(env, uid, rec);
   return redirect(`${play}?katsudo=ok#ks=${session}`);
@@ -422,6 +430,19 @@ async function handleStamp(env, request) {
   await saveUser(env, ses.uid, rec);
   await rememberNan(env, ses.uid);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
+}
+
+async function handleHand(url, env, request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowed = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim());
+  if (!origin || !allowed.includes(origin)) return json({ ok: false, error: "origin" }, 403, env, request);
+  const hand = cleanHand(url.searchParams.get("id"));
+  if (!hand) return json({ ok: false }, 400, env, request);
+  const row = await kvJson(env, `hd:${hand}`);
+  if (env.KATSUDO) await env.KATSUDO.delete(`hd:${hand}`);
+  const tok = row && typeof row.tok === "string" ? row.tok : "";
+  if (!/^[a-f0-9]{48}$/.test(tok)) return json({ ok: false }, 404, env, request);
+  return json({ ok: true, tok }, 200, env, request);
 }
 
 async function handleUnlink(env, request) {
@@ -624,6 +645,9 @@ export default {
     }
     if (url.pathname === "/v1/oauth/callback" && request.method === "GET") {
       return handleCallback(url, env);
+    }
+    if (url.pathname === "/v1/oauth/hand" && request.method === "GET") {
+      return handleHand(url, env, request);
     }
     if (url.pathname === "/v1/me" && request.method === "GET") {
       return handleMe(env, request);

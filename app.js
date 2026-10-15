@@ -1,4 +1,4 @@
-const VERSION = "0.4.106";
+const VERSION = "0.4.107";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -36,6 +36,7 @@ const STAGES = [
 ];
 const PLAY_URL = "https://gpro8.github.io/bo-aibou-arena/";
 const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
+const KATSUDO_HAND = "bo-aibou-katsudo-hand";
 const THEME_KEY = "bo-aibou-theme";
 const KATSUDO_SES = "bo-aibou-katsudo-ses";
 const KATSUDO_PROF = "bo-aibou-katsudo-prof";
@@ -731,6 +732,62 @@ async function pullKatsudo() {
     flushTodayStamps();
   }
   paintKatsudo();
+}
+
+function homeScreenApp() {
+  const nav = window.navigator;
+  if (nav && nav.standalone) return true;
+  return window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches;
+}
+
+function freshHand() {
+  const a = new Uint8Array(16);
+  crypto.getRandomValues(a);
+  const id = [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+  try {
+    localStorage.setItem(KATSUDO_HAND, id);
+  } catch {
+    /* ignore */
+  }
+  return id;
+}
+
+function armSafariConnect(el) {
+  if (!el || !homeScreenApp() || el.tagName === "A") return;
+  const a = document.createElement("a");
+  a.className = el.className;
+  a.innerHTML = el.innerHTML;
+  for (const attr of el.attributes) {
+    if (attr.name === "type") continue;
+    a.setAttribute(attr.name, attr.value);
+  }
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.href = `${KATSUDO_API}/v1/oauth/start`;
+  el.replaceWith(a);
+}
+
+async function claimHand() {
+  let id = "";
+  try {
+    id = localStorage.getItem(KATSUDO_HAND) || "";
+  } catch {
+    return;
+  }
+  if (!/^[a-f0-9]{32}$/.test(id)) return;
+  try {
+    const res = await fetch(`${KATSUDO_API}/v1/oauth/hand?id=${id}`, { headers: { Accept: "application/json" } });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.ok || !data.tok) return;
+    localStorage.removeItem(KATSUDO_HAND);
+    saveKatsudoSes(String(data.tok).toLowerCase());
+    show("katsudo");
+    showToast("つながった");
+    pullKatsudo();
+  } catch {
+    /* back later */
+  }
 }
 
 function consumeKatsudoReturn() {
@@ -3377,6 +3434,13 @@ async function main() {
 }
 
 function bindUi() {
+  armSafariConnect($("[data-dc-mark]"));
+  armSafariConnect($("[data-katsudo-connect]"));
+  claimHand();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") claimHand();
+  });
+  window.addEventListener("pageshow", () => claimHand());
   try {
     bindStick();
   } catch {
@@ -3454,14 +3518,24 @@ function bindUi() {
       return;
     }
     if (hit(ev, "[data-katsudo-connect]")) {
+      if (homeScreenApp()) {
+        const link = hit(ev, "[data-katsudo-connect]");
+        if (link && link.tagName === "A") link.href = `${KATSUDO_API}/v1/oauth/start?hand=${freshHand()}`;
+        showToast("Safariで開きました。つながったら戻ってください");
+        return;
+      }
       location.href = `${KATSUDO_API}/v1/oauth/start`;
       return;
     }
     const dcMark = hit(ev, "[data-dc-mark]");
     if (dcMark) {
       if (loadKatsudoSes()) {
+        ev.preventDefault();
         const ask = $("[data-dc-ask]");
         if (ask) ask.classList.remove("hidden");
+      } else if (homeScreenApp()) {
+        if (dcMark.tagName === "A") dcMark.href = `${KATSUDO_API}/v1/oauth/start?hand=${freshHand()}`;
+        showToast("Safariで開きました。つながったら戻ってください");
       } else {
         location.href = `${KATSUDO_API}/v1/oauth/start`;
       }
