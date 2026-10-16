@@ -1,4 +1,4 @@
-const VERSION = "0.4.107";
+const VERSION = "0.4.108";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -27,7 +27,7 @@ const FOE_NAMES = {
 
 const MODES = [
   { id: "easy", label: "ふつう", secs: 120, pace: 1 },
-  { id: "long", label: "ながい", secs: 180, pace: 1 },
+  { id: "long", label: "ゆるい", secs: 180, pace: 1, walk: 0.75 },
   { id: "hard", label: "きつい", secs: 80, pace: 1.35 },
 ];
 const STAGES = [
@@ -2084,7 +2084,7 @@ function bootArena() {
         }
       }
       // Walk 96. Dash stays 520 * pace. 親玉 walk stays 80.
-      foe.spd = (king ? 96 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace;
+      foe.spd = (king ? 96 : boss ? 80 : job === "small" ? 78 : job === "brute" ? 56 : job === "well" ? 24 : job === "fly" || job === "rebound" ? 52 : 70) * mode.pace * (mode.walk || 1);
       foe.hajiki = false;
       foe.wind = 0;
       foe.lunge = 0;
