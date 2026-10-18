@@ -513,11 +513,12 @@ function campaignMeta(env) {
   if (!start || !end || end < start) {
     return { status: "soon", start: "", end: "", window: lastJstDays(7), practice: true };
   }
-  const window = daysBetween(start, end);
+  const campaign = daysBetween(start, end);
   let status = "live";
   if (today < start) status = "soon";
   if (today > end) status = "ended";
-  return { status, start, end, window, practice: false };
+  const practice = status !== "live";
+  return { status, start, end, window: practice ? lastJstDays(7) : campaign, practice };
 }
 
 async function handleNanGet(env, request) {

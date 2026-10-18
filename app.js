@@ -1,4 +1,4 @@
-const VERSION = "0.4.109";
+const VERSION = "0.4.110";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1173,7 +1173,7 @@ function nanSpan(m) {
 function paintNanCount() {
   const m = nanMeta;
   let text = "";
-  if (m && m.start && !m.practice) {
+  if (m && m.start && (m.status === "soon" || m.status === "live")) {
     const now = Date.now();
     if (m.status === "soon") text = `開始まで ${remainWords(jstMidnightMs(m.start) - now)}`;
     else if (m.status === "live") text = `終了まで ${remainWords(jstMidnightMs(nextIso(m.end)) - now)}`;
@@ -1196,8 +1196,14 @@ function paintNanMine() {
   const easy = inWinCount(o.easy, win);
   const told = inWinCount(o.told, win);
   const bits = `走${play} 語${told} きつい${hard} ふつう${easy}`;
-  if (!m || !m.ok || m.practice || !m.start) {
+  if (!m || !m.ok || !m.start) {
     phase.textContent = "開始前（練習）本番の期間が決まるとこの数字は使わない";
+    stats.textContent = `練習 ${bits}`;
+    paintNanCount();
+    return;
+  }
+  if (m.status !== "live") {
+    phase.textContent = m.status === "ended" ? "本番は終了。下は練習（直近7日）" : "練習（直近7日）。本番では使わない";
     stats.textContent = `練習 ${bits}`;
     paintNanCount();
     return;
@@ -1231,8 +1237,8 @@ async function loadNan() {
       const st = data && data.status;
       const span = data && data.start ? nanSpan(data) : "";
       if (data && data.start && st === "live") phase.textContent = `開催中 ${span} この期間だけ`;
-      else if (data && data.start && st === "ended") phase.textContent = `終了 ${span} この期間だけ。後は数えない`;
-      else if (data && data.start && st === "soon") phase.textContent = `開始前 ${span} この期間だけ`;
+      else if (data && data.start && st === "ended") phase.textContent = "本番は終了。下は練習（直近7日）";
+      else if (data && data.start && st === "soon") phase.textContent = "下は練習（直近7日）。本番では使わない";
       else if (data && data.practice) phase.textContent = "開始前。下は練習（直近7日）。本番では使わない";
       else phase.textContent = "開始前。ルールを読んでつなぐ";
       paintNanCount();
@@ -1240,9 +1246,8 @@ async function loadNan() {
     const rows = data && Array.isArray(data.rows) ? data.rows : [];
     if (list) list.innerHTML = rows.map(nanRow).join("");
     if (empty) {
-      if (data && data.start && data.status === "soon") empty.textContent = "この期間はまだ始まっていない";
+      if (data && data.status === "live") empty.textContent = "この期間はまだ誰も走っていない";
       else if (data && data.practice) empty.textContent = "練習。まだ誰も走っていない";
-      else if (data && data.status === "ended") empty.textContent = "この期間に走った人はいない";
       else empty.textContent = "この期間はまだ誰も走っていない";
       empty.classList.toggle("hidden", rows.length > 0);
     }
