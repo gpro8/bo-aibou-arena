@@ -1,4 +1,4 @@
-const VERSION = "0.4.108";
+const VERSION = "0.4.109";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1136,6 +1136,54 @@ function nanWindow() {
   return [0, 1, 2, 3, 4, 5, 6].map((i) => shiftDay(jstDay(), -i));
 }
 
+function jpMonthDay(iso) {
+  const parts = String(iso || "").split("-");
+  if (parts.length < 3) return "";
+  return `${Number(parts[1])}月${Number(parts[2])}日`;
+}
+
+function jstMidnightMs(iso) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  if (!y || !m || !d) return 0;
+  return Date.UTC(y, m - 1, d) - 9 * 60 * 60 * 1000;
+}
+
+function nextIso(iso) {
+  const [y, m, d] = String(iso || "").split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+function remainWords(ms) {
+  if (ms <= 0) return "まもなく";
+  const min = Math.floor(ms / 60000);
+  const days = Math.floor(min / 1440);
+  const hours = Math.floor((min % 1440) / 60);
+  const mins = min % 60;
+  if (days > 0) return `${days}日 ${hours}時間`;
+  if (hours > 0) return `${hours}時間 ${mins}分`;
+  return `${Math.max(1, mins)}分`;
+}
+
+function nanSpan(m) {
+  if (!m || !m.start || !m.end) return "";
+  return `${jpMonthDay(m.start)} 0:00〜${jpMonthDay(m.end)} 23:59（JST）`;
+}
+
+function paintNanCount() {
+  const m = nanMeta;
+  let text = "";
+  if (m && m.start && !m.practice) {
+    const now = Date.now();
+    if (m.status === "soon") text = `開始まで ${remainWords(jstMidnightMs(m.start) - now)}`;
+    else if (m.status === "live") text = `終了まで ${remainWords(jstMidnightMs(nextIso(m.end)) - now)}`;
+  }
+  $$("[data-nan-count]").forEach((el) => {
+    el.textContent = text;
+    el.classList.toggle("hidden", !text);
+  });
+}
+
 function paintNanMine() {
   const phase = $("[data-nan-mine-phase]");
   const stats = $("[data-nan-mine-stats]");
@@ -1151,11 +1199,13 @@ function paintNanMine() {
   if (!m || !m.ok || m.practice || !m.start) {
     phase.textContent = "開始前（練習）本番の期間が決まるとこの数字は使わない";
     stats.textContent = `練習 ${bits}`;
+    paintNanCount();
     return;
   }
   const label = m.status === "ended" ? "終了" : m.status === "live" ? "開催中" : "開始前";
-  phase.textContent = `${label} ${m.start}〜${m.end}（JST）この期間だけ`;
+  phase.textContent = `${label} ${nanSpan(m)} この期間だけ`;
   stats.textContent = play >= 7 ? `${bits} 七日` : bits;
+  paintNanCount();
 }
 
 async function refreshNanMeta() {
@@ -1179,11 +1229,13 @@ async function loadNan() {
   try {
     if (phase) {
       const st = data && data.status;
-      if (data && data.start && st === "live") phase.textContent = `開催中 ${data.start}〜${data.end}（JST）この期間だけ`;
-      else if (data && data.start && st === "ended") phase.textContent = `終了 ${data.start}〜${data.end}（JST）この期間だけ。後は数えない`;
-      else if (data && data.start && st === "soon") phase.textContent = `開始前 ${data.start}〜${data.end}（JST）この期間だけ`;
+      const span = data && data.start ? nanSpan(data) : "";
+      if (data && data.start && st === "live") phase.textContent = `開催中 ${span} この期間だけ`;
+      else if (data && data.start && st === "ended") phase.textContent = `終了 ${span} この期間だけ。後は数えない`;
+      else if (data && data.start && st === "soon") phase.textContent = `開始前 ${span} この期間だけ`;
       else if (data && data.practice) phase.textContent = "開始前。下は練習（直近7日）。本番では使わない";
       else phase.textContent = "開始前。ルールを読んでつなぐ";
+      paintNanCount();
     }
     const rows = data && Array.isArray(data.rows) ? data.rows : [];
     if (list) list.innerHTML = rows.map(nanRow).join("");
@@ -3437,6 +3489,7 @@ function bindUi() {
   armSafariConnect($("[data-dc-mark]"));
   armSafariConnect($("[data-katsudo-connect]"));
   claimHand();
+  window.setInterval(paintNanCount, 30000);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") claimHand();
   });

@@ -40,7 +40,7 @@
     document.documentElement.setAttribute("data-theme", t);
   })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=0.4.108">
+  <link rel="stylesheet" href="styles.css?v=0.4.109">
 </head>
 <body>
   <div id="app">
@@ -129,6 +129,7 @@
       <div class="nan-card" data-nan-mine>
         <h2>七日の走</h2>
         <p class="hint" data-nan-mine-phase>期間が決まるとここに出る</p>
+        <p class="thanks hidden" data-nan-count></p>
         <p class="thanks" data-nan-mine-stats></p>
         <p class="hint">この期間だけ。前も後も数えない。上の日の印は別</p>
       </div>
@@ -150,6 +151,7 @@
       <p class="hint" data-ba-score-hint>つなぐと名前と姿が出る。番号は出ない</p>
       <p class="hint hidden" data-ba-nan-hint>この期間だけ。前も後も数えない。記録点は使わない。番号は出ない</p>
       <p class="hint hidden" data-nan-phase>開始前。ルールを読んでつなぐ</p>
+      <p class="thanks hidden" data-nan-count></p>
       <ul class="how hidden" data-nan-rules>
         <li>入場・参加無料。投票権・Gi・金銭にはなりません</li>
         <li>活動記録でつなぐ。名前と姿は出る。番号は出ない</li>
@@ -310,6 +312,6 @@
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
   }
   </script>
-  <script src="app.js?v=0.4.108"></script>
+  <script src="app.js?v=0.4.109"></script>
 </body>
 </html>
