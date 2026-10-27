@@ -1,4 +1,4 @@
-const VERSION = "0.4.110";
+const VERSION = "0.4.111";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -471,6 +471,27 @@ function streakCount(days, today) {
 
 function weekDays(today) {
   return [0, 1, 2, 3, 4, 5, 6].map((i) => shiftDay(today, -i));
+}
+
+function keptLine(run) {
+  const today = jstDay();
+  const pin = { start: "2026-10-25", end: "2026-10-31" };
+  const start = (nanMeta && nanMeta.start) || pin.start;
+  const end = (nanMeta && nanMeta.end) || pin.end;
+  const status = nanMeta && nanMeta.status
+    ? nanMeta.status
+    : today < pin.start
+      ? "soon"
+      : today > pin.end
+        ? "ended"
+        : "live";
+  if (status === "live") {
+    const kanji = ["", "一", "二", "三", "四", "五", "六", "七"];
+    const days = (loadKatsudo().days || []).filter((d) => d >= start && d <= end && d <= today);
+    const n = streakCount(days, today);
+    return n >= 1 && n <= 7 ? `${kanji[n]}日走り続けた` : "";
+  }
+  return run && run.streak >= 7 ? streakHonor(run.streak) : "";
 }
 
 function streakHonor(n) {
@@ -1392,7 +1413,7 @@ function raiseText(run) {
   if (run.raidWin && run.raidSec) {
     lines.push(run.raidBest ? `撃退自己ベスト ${run.raidSec}秒` : `撃退 ${run.raidSec}秒`);
   }
-  if (run.streak >= 7) lines.push(streakHonor(run.streak));
+  if (keptLine(run)) lines.push(keptLine(run));
   lines.push("入場・参加無料", "活動記録でつなぐ", PLAY_URL, "", "#相棒あそび #BushiDAO");
   return lines.join("\n");
 }
@@ -1454,7 +1475,7 @@ async function paintFlagCard(run) {
   ctx.fillStyle = "#9a8f82";
   ctx.font = "500 28px sans-serif";
   ctx.fillText("入場・参加無料", 540, 1180);
-  const kept = run.streak >= 7 ? streakHonor(run.streak) : "";
+  const kept = keptLine(run);
   ctx.fillStyle = kept ? "#f8b500" : "#9a8f82";
   ctx.fillText(kept || "希望に向かって駆け抜ける", 540, 1230);
   ctx.fillStyle = "#3a342c";
