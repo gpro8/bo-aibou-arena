@@ -266,7 +266,14 @@ async function sessionUid(env, request) {
   if (!tok) return null;
   const ses = await kvJson(env, `ses:${tok}`);
   if (!ses || !ses.uid || !/^\d{5,30}$/.test(ses.uid)) return null;
-  await kvPut(env, `ses:${tok}`, { uid: ses.uid }, SES_TTL);
+  const now = Date.now();
+  if (!ses.r || now - Number(ses.r) > 86400000) {
+    try {
+      await kvPut(env, `ses:${tok}`, { uid: ses.uid, r: now }, SES_TTL);
+    } catch {
+      /* a failed refresh must not drop the post */
+    }
+  }
   return { tok, uid: ses.uid };
 }
 
@@ -623,6 +630,15 @@ async function handleBaPost(env, request) {
 
 export default {
   async fetch(request, env) {
+    try {
+      return await handle(request, env);
+    } catch {
+      return json({ ok: false, error: "server" }, 500, env, request);
+    }
+  },
+};
+
+async function handle(request, env) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(env, request) });
     }
@@ -686,5 +702,4 @@ export default {
     }
 
     return json({ ok: false, error: "not_found" }, 404, env, request);
-  },
-};
+}
