@@ -632,7 +632,8 @@ export default {
   async fetch(request, env) {
     try {
       return await handle(request, env);
-    } catch {
+    } catch (err) {
+      console.error("worker", err && err.stack ? err.stack : err);
       return json({ ok: false, error: "server" }, 500, env, request);
     }
   },
