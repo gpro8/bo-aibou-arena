@@ -103,6 +103,7 @@
         </button>
       </p>
       <p class="hint" data-katsudo-join>ホーム画面のアプリからはSafariでつなぐ。つながったら戻ってください</p>
+      <p class="thanks hidden" data-link-dead>リンクが切れています。このブラウザでもう一度つなぐと、この端末の記録が順位に届きます。別のブラウザでは届きません</p>
       <div class="dc-ask hidden" data-dc-ask>
         <p>接続を解除しますか？</p>
         <div class="row">
@@ -143,6 +144,7 @@
 
     <section class="screen hidden" data-screen="ba">
       <h1>順位表</h1>
+      <p class="thanks hidden" data-link-dead>リンクが切れています。活動記録で、このブラウザからもう一度つなぐと順位に届きます。別のブラウザでは届きません</p>
       <p class="hint">誉。投票権・Gi・金銭にはなりません</p>
       <div class="chips">
         <button type="button" class="chip on" data-ba-tab="ba">記録</button>
@@ -277,6 +279,7 @@
         <p class="hint hidden" data-result-raid></p>
         <p class="hint" data-result-rec></p>
         <p class="hint hidden" data-result-katsudo></p>
+        <p class="thanks hidden" data-link-dead>リンクが切れています。活動記録で、このブラウザからもう一度つなぐと順位に届きます</p>
         <div class="col">
           <button type="button" class="btn gold" data-raise>𝕏でシェアする</button>
           <button type="button" class="btn ghost hidden" data-ba-post>順位表に載せる</button>
@@ -312,6 +315,6 @@
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
   }
   </script>
-  <script src="app.js?v=0.4.111"></script>
+  <script src="app.js?v=0.4.112"></script>
 </body>
 </html>

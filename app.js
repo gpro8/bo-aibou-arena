@@ -1,4 +1,4 @@
-const VERSION = "0.4.111";
+const VERSION = "0.4.112";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -39,6 +39,7 @@ const KATSUDO_API = "https://bo-aibou-katsudo.bushidao.workers.dev";
 const KATSUDO_HAND = "bo-aibou-katsudo-hand";
 const THEME_KEY = "bo-aibou-theme";
 const KATSUDO_SES = "bo-aibou-katsudo-ses";
+const LINK_DEAD = "bo-aibou-katsudo-link-dead";
 const KATSUDO_PROF = "bo-aibou-katsudo-prof";
 const SEEN_STEMS = ["chiri", "nuppe", "go", "kama", "kitsunebi", "suiko", "gyuki", "moogredon"];
 const TITLE_RANK = { "": 0, "kitsui-nobiru": 1, sanseru: 2, sansho: 3 };
@@ -637,7 +638,53 @@ function pushKatsudo(o) {
       title: o.title,
       version: VERSION,
     }),
-  }).catch(() => {});
+  }).then((got) => noteAuth(got)).catch(() => {});
+}
+
+function linkDead() {
+  try {
+    return localStorage.getItem(LINK_DEAD) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function paintLinkDead() {
+  const on = linkDead();
+  $$("[data-link-dead]").forEach((el) => el.classList.toggle("hidden", !on));
+}
+
+function noteLinkDead() {
+  try {
+    localStorage.setItem(LINK_DEAD, "1");
+  } catch {
+    /* guest */
+  }
+  saveKatsudoSes("");
+  paintLinkDead();
+  paintKatsudo();
+}
+
+function clearLinkDead() {
+  try {
+    localStorage.removeItem(LINK_DEAD);
+  } catch {
+    /* guest */
+  }
+  paintLinkDead();
+}
+
+function noteAuth(got) {
+  if (got && got.status === 401) noteLinkDead();
+  else if (got && got.ok) clearLinkDead();
+}
+
+function probeLink() {
+  if (!loadKatsudoSes()) {
+    paintLinkDead();
+    return;
+  }
+  katsudoFetch("/v1/me").then((got) => noteAuth(got)).catch(() => {});
 }
 
 function loadKatsudoSes() {
@@ -726,16 +773,16 @@ async function pullKatsudo() {
   }
   const got = await katsudoFetch("/v1/me");
   if (got.status === 401) {
-    saveKatsudoSes("");
-    paintKatsudo();
+    noteLinkDead();
     return;
   }
   if (got.ok) {
+    clearLinkDead();
     mergeKatsudoRemote(got.data);
     if (got.data && got.data.name) saveKatsudoProf({ name: got.data.name, av: got.data.av || "" });
     if (got.data && got.data.ba) saveBaMine(got.data.ba);
     const local = loadKatsudo();
-    await katsudoFetch("/v1/sync", {
+    const synced = await katsudoFetch("/v1/sync", {
       method: "POST",
       body: JSON.stringify({
         days: local.days,
@@ -750,6 +797,7 @@ async function pullKatsudo() {
         version: VERSION,
       }),
     });
+    noteAuth(synced);
     flushTodayStamps();
   }
   paintKatsudo();
@@ -866,6 +914,7 @@ function serverStamp(kinds) {
       })
     )
     .then((got) => {
+      noteAuth(got);
       if (got && got.ok && got.data) mergeKatsudoRemote(got.data);
       paintNanMine();
     })
@@ -1092,6 +1141,7 @@ function paintKatsudo() {
   const connect = $("[data-katsudo-connect]");
   if (connect) connect.classList.toggle("hidden", linked);
   paintNanMine();
+  paintLinkDead();
 }
 
 let baMode = "hard";
@@ -3515,6 +3565,7 @@ function bindUi() {
   armSafariConnect($("[data-dc-mark]"));
   armSafariConnect($("[data-katsudo-connect]"));
   claimHand();
+  probeLink();
   window.setInterval(paintNanCount, 30000);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") claimHand();
@@ -3629,6 +3680,7 @@ function bindUi() {
       const ask = $("[data-dc-ask]");
       if (ask) ask.classList.add("hidden");
       katsudoFetch("/v1/unlink", { method: "POST", body: "{}" }).finally(() => {
+        clearLinkDead();
         saveKatsudoSes("");
         paintKatsudo();
       });

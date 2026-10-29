@@ -266,6 +266,7 @@ async function sessionUid(env, request) {
   if (!tok) return null;
   const ses = await kvJson(env, `ses:${tok}`);
   if (!ses || !ses.uid || !/^\d{5,30}$/.test(ses.uid)) return null;
+  await kvPut(env, `ses:${tok}`, { uid: ses.uid }, SES_TTL);
   return { tok, uid: ses.uid };
 }
 
