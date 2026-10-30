@@ -399,11 +399,15 @@ async function handleSync(env, request) {
   rec.title = bestTitle(rec.title, incoming.title);
   rec.title = bestTitle(rec.title, rec.raidKills >= 3 ? "sansho" : rec.raidKills >= 1 ? "sanseru" : "");
   if (!rec.title && rec.hardClears > 0) rec.title = "kitsui-nobiru";
-  if (sameRecord(stored, rec)) return json(await publicMe(env, ses.uid, stored), 200, env, request);
+  if (sameRecord(stored, rec)) {
+    await markNanoka(env, ses.uid, stored.days);
+    return json(await publicMe(env, ses.uid, stored), 200, env, request);
+  }
   if (!(await rate(env, `rl:sync:${ses.uid}`, 30, 3600))) {
     return json({ ok: false, error: "rate" }, 429, env, request);
   }
   await saveUser(env, ses.uid, rec);
+  await markNanoka(env, ses.uid, rec.days);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
@@ -427,7 +431,10 @@ async function handleStamp(env, request) {
   if (kinds.includes("easy") && !rec.easy.includes(today)) fresh.push("easy");
   if (kinds.includes("hard") && !rec.hard.includes(today)) fresh.push("hard");
   if (kinds.includes("told") && !rec.told.includes(today)) fresh.push("told");
-  if (!fresh.length) return json(await publicMe(env, ses.uid, rec), 200, env, request);
+  if (!fresh.length) {
+    await markNanoka(env, ses.uid, rec.days);
+    return json(await publicMe(env, ses.uid, rec), 200, env, request);
+  }
   if (!(await rate(env, `rl:stamp:${ses.uid}:${today}`, 16, 90000))) {
     return json({ ok: false, error: "rate" }, 429, env, request);
   }
@@ -456,6 +463,7 @@ async function handleStamp(env, request) {
   rec.title = bestTitle(latest.title, rec.title);
   await saveUser(env, ses.uid, rec);
   await rememberNan(env, ses.uid);
+  await markNanoka(env, ses.uid, rec.days);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
 
@@ -478,6 +486,38 @@ async function handleUnlink(env, request) {
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   if (env.KATSUDO) await env.KATSUDO.delete(`ses:${ses.tok}`);
   return json({ ok: true, linked: false }, 200, env, request);
+}
+
+function windowDays(env) {
+  const start = String((env && env.CAMPAIGN_START) || "");
+  const end = String((env && env.CAMPAIGN_END) || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) return [];
+  const out = [];
+  const cur = new Date(`${start}T00:00:00Z`);
+  const last = new Date(`${end}T00:00:00Z`);
+  while (cur <= last && out.length < 14) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
+function nanokaCount(env, days) {
+  const allow = new Set(windowDays(env));
+  return cleanDays(days).filter((d) => allow.has(d)).length;
+}
+
+async function markNanoka(env, uid, days) {
+  if (!uid || nanokaCount(env, days) < 7) return;
+  const key = `q:nanoka:${uid}`;
+  const prev = await kvJson(env, key);
+  if (prev && prev.ok) return;
+  await kvPut(env, key, { ok: true, n: 7, at: Date.now() });
+  const raw = await kvJson(env, "nanoka:idx");
+  const idx = Array.isArray(raw) ? raw.filter((id) => typeof id === "string" && /^\d{5,30}$/.test(id)) : [];
+  if (idx.includes(uid)) return;
+  idx.push(uid);
+  await kvPut(env, "nanoka:idx", idx.slice(0, 2000));
 }
 
 async function rememberNan(env, uid) {
