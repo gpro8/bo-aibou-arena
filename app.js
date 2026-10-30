@@ -1,4 +1,4 @@
-const VERSION = "0.4.113";
+const VERSION = "0.4.114";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -767,6 +767,19 @@ function mergeKatsudoRemote(remote) {
   return next;
 }
 
+function localAhead(local, remote) {
+  const miss = (a, b) => (a || []).some((d) => !(b || []).includes(d));
+  const r = remote || {};
+  if (miss(local.days, r.days) || miss(local.easy, r.easy) || miss(local.hard, r.hard) || miss(local.told, r.told) || miss(local.seen, r.seen)) return true;
+  if ((local.hardClears || 0) > (r.hardClears || 0)) return true;
+  if ((local.raidKills || 0) > (r.raidKills || 0)) return true;
+  const best = Number(local.raidBestMs) || 0;
+  const remoteBest = Number(r.raidBestMs) || 0;
+  if (best && (!remoteBest || best < remoteBest)) return true;
+  const rank = { "": 0, "kitsui-nobiru": 1, sanseru: 2, sansho: 3 };
+  return (rank[local.title] || 0) > (rank[r.title] || 0);
+}
+
 async function pullKatsudo() {
   if (!loadKatsudoSes()) {
     paintKatsudo();
@@ -779,11 +792,14 @@ async function pullKatsudo() {
   }
   if (got.ok) {
     clearLinkDead();
-    mergeKatsudoRemote(got.data);
+    const remote = got.data || {};
+    const before = loadKatsudo();
+    mergeKatsudoRemote(remote);
     if (got.data && got.data.name) saveKatsudoProf({ name: got.data.name, av: got.data.av || "" });
     if (got.data && got.data.ba) saveBaMine(got.data.ba);
-    const local = loadKatsudo();
-    const synced = await katsudoFetch("/v1/sync", {
+    if (localAhead(before, remote)) {
+      const local = loadKatsudo();
+      const synced = await katsudoFetch("/v1/sync", {
       method: "POST",
       body: JSON.stringify({
         days: local.days,
@@ -798,7 +814,8 @@ async function pullKatsudo() {
         version: VERSION,
       }),
     });
-    noteAuth(synced);
+      noteAuth(synced);
+    }
     flushTodayStamps();
   }
   paintKatsudo();
@@ -937,13 +954,13 @@ function stampPlayDay(modeId) {
   o.v = 1;
   saveKatsudo(o);
   serverStamp(kinds);
-  pushKatsudo(o);
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length };
 }
 
 function stampHardWin() {
   const o = loadKatsudo();
   const day = jstDay();
+  const hadHard = (o.hard || []).includes(day);
   const freshDay = !o.days.includes(day);
   if (freshDay) o.days.push(day);
   if (o.days.length > 400) o.days = o.days.slice(-400);
@@ -953,7 +970,7 @@ function stampHardWin() {
   o.v = 1;
   saveKatsudo(o);
   serverStamp(["play", "hard"]);
-  pushKatsudo(o);
+  if (hadHard) pushKatsudo(o);
   return { freshDay, streak: streakCount(o.days, day), days: o.days.length, hardClears: o.hardClears };
 }
 
@@ -983,7 +1000,6 @@ function noteTold(opts) {
     paintKatsudo();
   }
   serverStamp(["told"]);
-  if (fresh) pushKatsudo(o);
   return fresh;
 }
 
@@ -1365,6 +1381,11 @@ async function postBa() {
   const mode = run.mode === "easy" ? "easy" : run.mode === "long" ? "long" : run.mode === "hard" ? "hard" : "";
   if (!mode) return;
   const score = Math.max(0, Math.min(99999, Math.floor(Number(run.score) || 0)));
+  const mine = loadBaMine();
+  if ((mine[mode] || 0) >= score) {
+    showToast("載せた");
+    return;
+  }
   const got = await katsudoFetch("/v1/ba", {
     method: "POST",
     body: JSON.stringify({ mode, score, version: VERSION }),

@@ -106,6 +106,15 @@ function bestMs(a, b) {
   return Math.min(x, y);
 }
 
+function sameRecord(a, b) {
+  return JSON.stringify(cleanRecord(a)) === JSON.stringify(cleanRecord(b));
+}
+
+function rowScore(raw, uid) {
+  const prev = Array.isArray(raw) ? raw.find((r) => r && r.uid === uid) : null;
+  return Math.max(0, Math.min(SCORE_MAX, Number(prev && prev.score) || 0));
+}
+
 function cleanRecord(raw) {
   const o = raw && typeof raw === "object" ? raw : {};
   const hardClears = Math.max(0, Math.min(99999, Number(o.hardClears) || 0));
@@ -370,9 +379,6 @@ async function handleMe(env, request) {
 async function handleSync(env, request) {
   const ses = await sessionUid(env, request);
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
-  if (!(await rate(env, `rl:sync:${ses.uid}`, 30, 3600))) {
-    return json({ ok: false, error: "rate" }, 429, env, request);
-  }
   let body = {};
   try {
     body = await request.json();
@@ -380,7 +386,8 @@ async function handleSync(env, request) {
     body = {};
   }
   const incoming = cleanRecord(body);
-  const rec = await loadUser(env, ses.uid);
+  const stored = await loadUser(env, ses.uid);
+  const rec = cleanRecord(stored);
   rec.days = cleanDays([...(rec.days || []), ...(incoming.days || [])]);
   rec.easy = cleanDays([...(rec.easy || []), ...(incoming.easy || [])]);
   rec.hard = cleanDays([...(rec.hard || []), ...(incoming.hard || [])]);
@@ -390,6 +397,12 @@ async function handleSync(env, request) {
   rec.raidKills = Math.max(rec.raidKills || 0, incoming.raidKills || 0);
   rec.raidBestMs = bestMs(rec.raidBestMs, incoming.raidBestMs);
   rec.title = bestTitle(rec.title, incoming.title);
+  rec.title = bestTitle(rec.title, rec.raidKills >= 3 ? "sansho" : rec.raidKills >= 1 ? "sanseru" : "");
+  if (!rec.title && rec.hardClears > 0) rec.title = "kitsui-nobiru";
+  if (sameRecord(stored, rec)) return json(await publicMe(env, ses.uid, stored), 200, env, request);
+  if (!(await rate(env, `rl:sync:${ses.uid}`, 30, 3600))) {
+    return json({ ok: false, error: "rate" }, 429, env, request);
+  }
   await saveUser(env, ses.uid, rec);
   return json(await publicMe(env, ses.uid, rec), 200, env, request);
 }
@@ -398,9 +411,6 @@ async function handleStamp(env, request) {
   const ses = await sessionUid(env, request);
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
   const today = jstDay();
-  if (!(await rate(env, `rl:stamp:${ses.uid}:${today}`, 16, 90000))) {
-    return json({ ok: false, error: "rate" }, 429, env, request);
-  }
   let body = {};
   try {
     body = await request.json();
@@ -412,15 +422,24 @@ async function handleStamp(env, request) {
   const kinds = [...new Set(raw.map((k) => String(k)).filter((k) => allow.has(k)))].slice(0, 4);
   if (!kinds.length) return json({ ok: false, error: "kind" }, 400, env, request);
   const rec = await loadUser(env, ses.uid);
+  const fresh = [];
+  if (kinds.includes("play") && !rec.days.includes(today)) fresh.push("play");
+  if (kinds.includes("easy") && !rec.easy.includes(today)) fresh.push("easy");
+  if (kinds.includes("hard") && !rec.hard.includes(today)) fresh.push("hard");
+  if (kinds.includes("told") && !rec.told.includes(today)) fresh.push("told");
+  if (!fresh.length) return json(await publicMe(env, ses.uid, rec), 200, env, request);
+  if (!(await rate(env, `rl:stamp:${ses.uid}:${today}`, 16, 90000))) {
+    return json({ ok: false, error: "rate" }, 429, env, request);
+  }
   rec.seen = cleanSeen([...(rec.seen || []), ...(cleanRecord(body).seen || [])]);
-  if (kinds.includes("play") && !rec.days.includes(today)) rec.days.push(today);
-  if (kinds.includes("easy") && !rec.easy.includes(today)) rec.easy.push(today);
-  if (kinds.includes("hard") && !rec.hard.includes(today)) {
+  if (fresh.includes("play")) rec.days.push(today);
+  if (fresh.includes("easy")) rec.easy.push(today);
+  if (fresh.includes("hard")) {
     rec.hard.push(today);
     rec.hardClears = Math.min(99999, rec.hardClears + 1);
     rec.title = bestTitle(rec.title, "kitsui-nobiru");
   }
-  if (kinds.includes("told") && !rec.told.includes(today)) rec.told.push(today);
+  if (fresh.includes("told")) rec.told.push(today);
   rec.days = cleanDays(rec.days);
   rec.easy = cleanDays(rec.easy);
   rec.hard = cleanDays(rec.hard);
@@ -447,6 +466,7 @@ async function handleHand(url, env, request) {
   const hand = cleanHand(url.searchParams.get("id"));
   if (!hand) return json({ ok: false }, 400, env, request);
   const row = await kvJson(env, `hd:${hand}`);
+  if (!row) return json({ ok: false }, 404, env, request);
   if (env.KATSUDO) await env.KATSUDO.delete(`hd:${hand}`);
   const tok = row && typeof row.tok === "string" ? row.tok : "";
   if (!/^[a-f0-9]{48}$/.test(tok)) return json({ ok: false }, 404, env, request);
@@ -606,9 +626,6 @@ async function handleBaGet(env, request) {
 async function handleBaPost(env, request) {
   const ses = await sessionUid(env, request);
   if (!ses) return json({ ok: false, error: "auth" }, 401, env, request);
-  if (!(await rate(env, `rl:ba:${ses.uid}`, 8, 3600))) {
-    return json({ ok: false, error: "rate" }, 429, env, request);
-  }
   let body = {};
   try {
     body = await request.json();
@@ -618,14 +635,30 @@ async function handleBaPost(env, request) {
   const mode = cleanMode(body.mode);
   if (!mode) return json({ ok: false, error: "mode" }, 400, env, request);
   const score = Math.max(0, Math.min(SCORE_MAX, Math.floor(Number(body.score) || 0)));
+  const month = jstMonth();
+  const allRaw = await kvJson(env, `ba:${mode}`);
+  const monRaw = await kvJson(env, `ba:${mode}:${month}`);
+  const prevAll = rowScore(allRaw, ses.uid);
+  const prevMon = rowScore(monRaw, ses.uid);
+  if (score <= prevAll && score <= prevMon) {
+    return json({ ok: true, mode, score: prevAll, month, kept: true }, 200, env, request);
+  }
+  if (!(await rate(env, `rl:ba:${ses.uid}`, 8, 3600))) {
+    return json({ ok: false, error: "rate" }, 429, env, request);
+  }
   const prof = await loadProfile(env, ses.uid);
   const name = prof.name || "走った人";
-  const all = upsertBaRow(await kvJson(env, `ba:${mode}`), ses.uid, name, prof.av, score);
-  await kvPut(env, `ba:${mode}`, all.rows);
-  const month = jstMonth();
-  const mon = upsertBaRow(await kvJson(env, `ba:${mode}:${month}`), ses.uid, name, prof.av, score);
-  await kvPut(env, `ba:${mode}:${month}`, mon.rows);
-  return json({ ok: true, mode, score: all.kept, month }, 200, env, request);
+  let kept = prevAll;
+  if (score > prevAll) {
+    const all = upsertBaRow(allRaw, ses.uid, name, prof.av, score);
+    await kvPut(env, `ba:${mode}`, all.rows);
+    kept = all.kept;
+  }
+  if (score > prevMon) {
+    const mon = upsertBaRow(monRaw, ses.uid, name, prof.av, score);
+    await kvPut(env, `ba:${mode}:${month}`, mon.rows);
+  }
+  return json({ ok: true, mode, score: kept, month }, 200, env, request);
 }
 
 export default {

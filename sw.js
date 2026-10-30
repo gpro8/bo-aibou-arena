@@ -1,4 +1,4 @@
-const CACHE = "aibou-shell-0.4.113";
+const CACHE = "aibou-shell-0.4.114";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
