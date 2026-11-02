@@ -1,4 +1,4 @@
-const VERSION = "0.4.114";
+const VERSION = "0.4.115";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -3008,7 +3008,13 @@ function bootArena() {
       const result = $("#result-ov");
       if (pause) pause.classList.add("hidden");
       if (raid) raid.classList.add("hidden");
-      if (result) result.classList.remove("hidden");
+      if (result) {
+        const stay = result.querySelector("[data-result-stay]");
+        const leave = result.querySelector("[data-result-leave]");
+        if (stay) stay.classList.remove("hidden");
+        if (leave) leave.classList.add("hidden");
+        result.classList.remove("hidden");
+      }
     }
     latePush() {
       this.callout("終盤");
@@ -3796,6 +3802,13 @@ function bindUi() {
     }
     if (hit(ev,"[data-raid-no]")) {
       declineRaid();
+      return;
+    }
+    if (hit(ev,"[data-result-quit]")) {
+      const stay = $("[data-result-stay]");
+      const leave = $("[data-result-leave]");
+      if (stay) stay.classList.add("hidden");
+      if (leave) leave.classList.remove("hidden");
       return;
     }
     if (hit(ev,"[data-quit]")) {

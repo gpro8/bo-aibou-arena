@@ -274,17 +274,21 @@
       <div id="result-ov" class="hidden">
         <h1 data-result-title></h1>
         <p class="thanks" data-thanks></p>
-        <img class="flag-card hidden" data-flag-card alt="">
         <p class="hint" data-result-line></p>
         <p class="hint hidden" data-result-raid></p>
         <p class="hint" data-result-rec></p>
         <p class="hint hidden" data-result-katsudo></p>
-        <p class="thanks hidden" data-link-dead>リンクが切れています。活動記録で、このブラウザからもう一度つなぐと順位に届きます</p>
-        <div class="col">
+        <div class="col" data-result-stay>
+          <button type="button" class="btn gold" data-again>もういちど</button>
+          <button type="button" class="btn ghost" data-result-quit>やめる</button>
+        </div>
+        <div class="col hidden" data-result-leave>
+          <img class="flag-card hidden" data-flag-card alt="">
+          <p class="thanks hidden" data-link-dead>リンクが切れています。活動記録で、このブラウザからもう一度つなぐと順位に届きます</p>
           <button type="button" class="btn gold" data-raise>𝕏でシェアする</button>
           <button type="button" class="btn ghost hidden" data-ba-post>順位表に載せる</button>
-          <button type="button" class="btn gold" data-again>もういちど</button>
           <button type="button" class="btn ghost" data-go="title">はじめへ</button>
+          <button type="button" class="btn ghost" data-again>もういちど</button>
         </div>
       </div>
       <div id="raise-ov" class="hidden">
@@ -315,6 +319,6 @@
     navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
   }
   </script>
-  <script src="app.js?v=0.4.114"></script>
+  <script src="app.js?v=0.4.115"></script>
 </body>
 </html>
