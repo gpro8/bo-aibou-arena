@@ -1,4 +1,4 @@
-const VERSION = "0.4.115";
+const VERSION = "0.4.116";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1381,11 +1381,6 @@ async function postBa() {
   const mode = run.mode === "easy" ? "easy" : run.mode === "long" ? "long" : run.mode === "hard" ? "hard" : "";
   if (!mode) return;
   const score = Math.max(0, Math.min(99999, Math.floor(Number(run.score) || 0)));
-  const mine = loadBaMine();
-  if ((mine[mode] || 0) >= score) {
-    showToast("載せた");
-    return;
-  }
   const got = await katsudoFetch("/v1/ba", {
     method: "POST",
     body: JSON.stringify({ mode, score, version: VERSION }),
@@ -1400,8 +1395,10 @@ async function postBa() {
     return;
   }
   if (got.ok) {
-    saveBaMine({ [mode]: score });
+    const kept = Math.max(score, Number(got.data && got.data.score) || 0);
+    saveBaMine({ [mode]: kept });
     showToast("載せた");
+    if (!$("[data-screen='ba']") || !$("[data-screen='ba']").classList.contains("hidden")) loadBa();
     return;
   }
   showToast("載せられませんでした");
