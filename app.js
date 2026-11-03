@@ -1,4 +1,4 @@
-const VERSION = "0.4.116";
+const VERSION = "0.4.117";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1176,6 +1176,12 @@ function baRow(r) {
   return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-score">${score}</span></li>`;
 }
 
+function nanBit(label, n) {
+  const v = Number(n) || 0;
+  const num = v >= 7 ? `<span class="ba-hit">${v}</span>` : String(v);
+  return `${label}${num}`;
+}
+
 function nanRow(r) {
   const name = String(r.name || "走った人").replace(/[<>]/g, "");
   const av = typeof r.av === "string" && r.av.startsWith("https://cdn.discordapp.com/") ? r.av : "";
@@ -1184,7 +1190,8 @@ function nanRow(r) {
     : `<span class="dc-ava ba-ph"></span>`;
   const n = Number(r.n) || 0;
   const mark = r.ok7 ? `<span class="ba-ok">七日</span>` : "";
-  return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-meta">語${Number(r.told) || 0} きつい${Number(r.hard) || 0} ふつう${Number(r.easy) || 0} 走${Number(r.play) || 0}</span>${mark}</li>`;
+  const meta = [nanBit("語", r.told), nanBit("きつい", r.hard), nanBit("ふつう", r.easy), nanBit("走", r.play)].join(" ");
+  return `<li class="ba-row"><span class="ba-n">${n}</span>${img}<span class="ba-name">${name}</span><span class="ba-meta">${meta}</span>${mark}</li>`;
 }
 
 function paintBaChrome() {

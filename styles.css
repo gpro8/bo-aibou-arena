@@ -390,6 +390,10 @@ body.playing #app {
   font-size: 11px;
   color: var(--gold);
 }
+.ba-hit {
+  color: #c4a15a;
+  font-weight: 600;
+}
 .nan-card {
   margin: 14px 0;
   padding: 12px 14px;
