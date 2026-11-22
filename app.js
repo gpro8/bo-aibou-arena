@@ -1,4 +1,4 @@
-const VERSION = "0.4.118";
+const VERSION = "0.4.119";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -102,12 +102,11 @@ function kit(e) {
     return {
       color: 0xf8b500,
       hp: 34,
-      speed: 175,
+      speed: 185,
       rate: 520,
       skill: "光の足跡",
-      kind: "puff",
+      kind: "paws",
       sideOnly: true,
-      scale: 0.7,
       dmg: 5,
     };
   }
@@ -1826,6 +1825,8 @@ function bootArena() {
         if (ov) ov.classList.add("hidden");
         if (this.physics && this.physics.world) this.physics.world.resume();
       });
+      this.paws = [];
+      this.pawAcc = 0;
       this.cursors = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT");
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
@@ -2744,7 +2745,61 @@ function bootArena() {
         }
       }
     }
+    dropPaw() {
+      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0x6a7dff, 0xb44dff];
+      const c = colors[this.paws.length % colors.length];
+      const g = this.add.graphics();
+      const x = this.player.x - (this.face > 0 ? 8 : -8);
+      const y = this.player.y + 16;
+      g.fillStyle(c, 0.9);
+      g.fillCircle(0, 3, 4.5);
+      g.fillCircle(-5, -3, 2);
+      g.fillCircle(-1.5, -6, 1.8);
+      g.fillCircle(2, -6, 1.8);
+      g.fillCircle(5.5, -2.5, 1.8);
+      g.setPosition(x, y);
+      g.setDepth(2);
+      this.paws.push({ g, x, y, until: this.time.now + 1400, tick: 0 });
+      this.tweens.add({ targets: g, alpha: 0.15, delay: 800, duration: 600 });
+    }
+    grazePaw(foe) {
+      if (!foe.active || foe.hp <= 1) return;
+      const now = this.time.now;
+      if (foe.pawUntil && now < foe.pawUntil) return;
+      foe.pawUntil = now + 280;
+      const dmg = Math.min(k.dmg, foe.hp - 1);
+      if (dmg < 1) return;
+      foe.hp -= dmg;
+      this.flash(foe);
+      this.pop(foe.x, foe.y - 8, dmg, "#b44dff", "16px");
+    }
+    tickPaws(delta) {
+      const moving = this.player && this.player.body && this.player.body.speed > 8;
+      const hayate = this.time.now < this.fastUntil;
+      this.pawAcc += delta;
+      const gap = hayate ? 90 : 200;
+      if (moving && this.pawAcc > gap) {
+        this.pawAcc = 0;
+        this.dropPaw();
+      }
+      const now = this.time.now;
+      this.paws = this.paws.filter((p) => {
+        if (now > p.until) {
+          p.g.destroy();
+          return false;
+        }
+        p.tick -= delta;
+        if (p.tick > 0) return true;
+        p.tick = 280;
+        this.foes.children.iterate((f) => {
+          if (!f || !f.active) return;
+          if (Phaser.Math.Distance.Between(p.x, p.y, f.x, f.y) < 22) this.grazePaw(f);
+        });
+        return true;
+      });
+    }
     fire() {
+      if (k.kind === "paws") return;
       if (k.kind === "puff") {
         const r = this.puffReach();
         const ring = this.add.circle(this.player.x, this.player.y, 8, k.color, 0.35);
@@ -2853,9 +2908,12 @@ function bootArena() {
         if (k.sideOnly) {
           if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
           this.player.setFlipX(this.face > 0);
-          if (moving && Math.abs(vx) >= Math.abs(vy) && Math.abs(vx) > 0.01) {
+          if (moving) {
             this.player.anims.play("mate-run", true);
+            if (Math.abs(vy) > Math.abs(vx)) this.startVertBob();
+            else this.stopVertBob();
           } else {
+            this.stopVertBob();
             this.player.anims.stop();
             this.player.setFrame(1);
           }
@@ -3161,6 +3219,7 @@ function bootArena() {
         return;
       }
       this.move(delta);
+      if (k.kind === "paws") this.tickPaws(delta);
       if (k.kind === "spark") this.tickSparks(delta);
       this.secAcc += delta;
       if (this.secAcc >= 1000) {
