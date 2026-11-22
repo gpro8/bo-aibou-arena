@@ -1,8 +1,9 @@
-const VERSION = "0.4.117";
+const VERSION = "0.4.118";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
   mokopu: "art/mokopu/sheet.png",
+  mitsumaru: "art/mitsumaru/sheet.png",
 };
 const FOE_SHEETS = {
   small: "art/foes/chiri/sheet.png",
@@ -95,6 +96,19 @@ function kit(e) {
       skill: "ネオンスパーク",
       kind: "spark",
       dmg: 6,
+    };
+  }
+  if (e.id === "mitsumaru") {
+    return {
+      color: 0xf8b500,
+      hp: 34,
+      speed: 175,
+      rate: 520,
+      skill: "光の足跡",
+      kind: "puff",
+      sideOnly: true,
+      scale: 0.7,
+      dmg: 5,
     };
   }
   return {
@@ -1793,7 +1807,7 @@ function bootArena() {
           repeat: -1,
         });
         this.player = this.physics.add.sprite(w / 2, h / 2, "mate", 0);
-        this.player.setScale(k.bob ? 0.58 : 0.52);
+        this.player.setScale(k.scale || (k.bob ? 0.58 : 0.52));
         this.player.body.setCircle(k.bob ? 42 : 36, 40, k.bob ? 55 : 70);
         this.player.setDepth(5);
       } else {
@@ -2836,7 +2850,16 @@ function bootArena() {
       const spd = k.speed;
       b.setVelocity(moving ? (vx / len) * spd : 0, moving ? (vy / len) * spd : 0);
       if (this.hasSprite) {
-        if (k.bob) {
+        if (k.sideOnly) {
+          if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
+          this.player.setFlipX(this.face > 0);
+          if (moving && Math.abs(vx) >= Math.abs(vy) && Math.abs(vx) > 0.01) {
+            this.player.anims.play("mate-run", true);
+          } else {
+            this.player.anims.stop();
+            this.player.setFrame(1);
+          }
+        } else if (k.bob) {
           if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
           this.player.setFlipX(this.face > 0);
           if (moving) this.player.anims.play("mate-run", true);
@@ -3582,10 +3605,34 @@ function killGame() {
   }
 }
 
+function secretMate() {
+  try {
+    return new URLSearchParams(location.search).get("k") === "7f3k";
+  } catch {
+    return false;
+  }
+}
+
+const HIDDEN_MATE = {
+  id: "mitsumaru",
+  name: "光丸",
+  species: "豆狸（たぬきの精）",
+  owner: "BO",
+  fields: [
+    ["属性", "光"],
+    ["特技", "光の足跡"],
+  ],
+};
+
 async function main() {
   const res = await fetch(`./data/entries.json?v=${VERSION}`);
   state.data = await res.json();
-  state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
+  if (secretMate()) {
+    state.data.entries = [...(state.data.entries || []), HIDDEN_MATE];
+    state.mate = HIDDEN_MATE;
+  } else {
+    state.mate = (state.data.entries || []).find((e) => e.id === "mokopu") || (state.data.entries || [])[0];
+  }
   const ver = $("[data-ver]");
   if (ver) ver.textContent = `v${VERSION}`;
   loadStickSide();
