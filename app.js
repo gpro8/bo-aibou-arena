@@ -1,4 +1,4 @@
-const VERSION = "0.4.119";
+const VERSION = "0.4.120";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2745,58 +2745,85 @@ function bootArena() {
         }
       }
     }
-    dropPaw() {
-      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0x6a7dff, 0xb44dff];
-      const c = colors[this.paws.length % colors.length];
+    pawLen() {
+      return Math.min(4, this.lv);
+    }
+    pawDmg() {
+      return 8 + (this.lv - 1);
+    }
+    pawMark(x, y, color) {
       const g = this.add.graphics();
-      const x = this.player.x - (this.face > 0 ? 8 : -8);
-      const y = this.player.y + 16;
-      g.fillStyle(c, 0.9);
-      g.fillCircle(0, 3, 4.5);
-      g.fillCircle(-5, -3, 2);
-      g.fillCircle(-1.5, -6, 1.8);
-      g.fillCircle(2, -6, 1.8);
-      g.fillCircle(5.5, -2.5, 1.8);
+      g.fillStyle(color, 0.92);
+      g.fillCircle(0, 2, 5);
+      g.fillCircle(-6, -3, 2.2);
+      g.fillCircle(-2, -6, 2);
+      g.fillCircle(2.5, -6, 2);
+      g.fillCircle(6, -2.5, 2.2);
       g.setPosition(x, y);
       g.setDepth(2);
-      this.paws.push({ g, x, y, until: this.time.now + 1400, tick: 0 });
-      this.tweens.add({ targets: g, alpha: 0.15, delay: 800, duration: 600 });
+      return g;
     }
-    grazePaw(foe) {
-      if (!foe.active || foe.hp <= 1) return;
-      const now = this.time.now;
-      if (foe.pawUntil && now < foe.pawUntil) return;
-      foe.pawUntil = now + 280;
-      const dmg = Math.min(k.dmg, foe.hp - 1);
-      if (dmg < 1) return;
-      foe.hp -= dmg;
-      this.flash(foe);
-      this.pop(foe.x, foe.y - 8, dmg, "#b44dff", "16px");
+    dropPaw() {
+      const x = this.player.x;
+      const y = this.player.y + 12;
+      this.paws.push({
+        g: this.pawMark(x, y, 0xff9a3a),
+        x,
+        y,
+        fuse: 240,
+      });
+    }
+    boom(p) {
+      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0xb44dff];
+      const len = this.pawLen();
+      const step = 36;
+      const hits = [{ x: p.x, y: p.y }];
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (let i = 1; i <= len; i += 1) {
+        dirs.forEach(([dx, dy]) => {
+          hits.push({ x: p.x + dx * step * i, y: p.y + dy * step * i });
+        });
+      }
+      hits.forEach((h, i) => {
+        const mark = this.pawMark(h.x, h.y, colors[i % colors.length]);
+        this.tweens.add({
+          targets: mark,
+          alpha: 0,
+          duration: 380,
+          onComplete: () => mark.destroy(),
+        });
+      });
+      const dmg = this.pawDmg();
+      const seen = new Set();
+      const kids = this.foes.getChildren ? this.foes.getChildren() : [];
+      kids.forEach((f) => {
+        if (!f || !f.active || seen.has(f)) return;
+        const near = hits.some((h) => Phaser.Math.Distance.Between(h.x, h.y, f.x, f.y) < 32);
+        if (!near) return;
+        seen.add(f);
+        this.hurtFoe(f, dmg, "16px");
+      });
+      if (p.g) p.g.destroy();
     }
     tickPaws(delta) {
-      const moving = this.player && this.player.body && this.player.body.speed > 8;
+      const b = this.player && this.player.body;
+      const moving = b && Math.hypot(b.velocity.x, b.velocity.y) > 8;
       const hayate = this.time.now < this.fastUntil;
       this.pawAcc += delta;
-      const gap = hayate ? 90 : 200;
-      if (moving && this.pawAcc > gap) {
+      if (moving && this.pawAcc > (hayate ? 420 : 780)) {
         this.pawAcc = 0;
         this.dropPaw();
       }
-      const now = this.time.now;
-      this.paws = this.paws.filter((p) => {
-        if (now > p.until) {
-          p.g.destroy();
-          return false;
+      const next = [];
+      this.paws.forEach((p) => {
+        p.fuse -= delta;
+        if (p.fuse > 0) {
+          next.push(p);
+          return;
         }
-        p.tick -= delta;
-        if (p.tick > 0) return true;
-        p.tick = 280;
-        this.foes.children.iterate((f) => {
-          if (!f || !f.active) return;
-          if (Phaser.Math.Distance.Between(p.x, p.y, f.x, f.y) < 22) this.grazePaw(f);
-        });
-        return true;
+        this.boom(p);
       });
+      this.paws = next;
     }
     fire() {
       if (k.kind === "paws") return;
@@ -2908,12 +2935,8 @@ function bootArena() {
         if (k.sideOnly) {
           if (moving && Math.abs(vx) > 0.01) this.face = vx > 0 ? 1 : -1;
           this.player.setFlipX(this.face > 0);
-          if (moving) {
-            this.player.anims.play("mate-run", true);
-            if (Math.abs(vy) > Math.abs(vx)) this.startVertBob();
-            else this.stopVertBob();
-          } else {
-            this.stopVertBob();
+          if (moving) this.player.anims.play("mate-run", true);
+          else {
             this.player.anims.stop();
             this.player.setFrame(1);
           }
@@ -3219,7 +3242,6 @@ function bootArena() {
         return;
       }
       this.move(delta);
-      if (k.kind === "paws") this.tickPaws(delta);
       if (k.kind === "spark") this.tickSparks(delta);
       this.secAcc += delta;
       if (this.secAcc >= 1000) {
@@ -3300,6 +3322,7 @@ function bootArena() {
         this.spawnAcc = 0;
         this.spawn();
       }
+      if (k.kind === "paws") this.tickPaws(delta);
       this.shotAcc += delta;
       const hayate = this.time.now < this.fastUntil;
       const paced = Math.max(240, k.rate - (this.lv - 1) * 40);
