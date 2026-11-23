@@ -1,4 +1,4 @@
-const VERSION = "0.4.120";
+const VERSION = "0.4.121";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -2745,8 +2745,8 @@ function bootArena() {
         }
       }
     }
-    pawLen() {
-      return Math.min(4, this.lv);
+    blastR() {
+      return Math.min(84, 44 + (this.lv - 1) * 8);
     }
     pawDmg() {
       return 8 + (this.lv - 1);
@@ -2766,42 +2766,45 @@ function bootArena() {
     dropPaw() {
       const x = this.player.x;
       const y = this.player.y + 12;
+      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0xb44dff];
       this.paws.push({
-        g: this.pawMark(x, y, 0xff9a3a),
+        g: this.pawMark(x, y, colors[this.paws.length % colors.length]),
         x,
         y,
-        fuse: 240,
+        fuse: 500,
       });
     }
     boom(p) {
+      const r = this.blastR();
       const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0xb44dff];
-      const len = this.pawLen();
-      const step = 36;
-      const hits = [{ x: p.x, y: p.y }];
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-      for (let i = 1; i <= len; i += 1) {
-        dirs.forEach(([dx, dy]) => {
-          hits.push({ x: p.x + dx * step * i, y: p.y + dy * step * i });
+      const core = this.add.circle(p.x, p.y, 8, 0xfff6d0, 0.9);
+      core.setStrokeStyle(4, colors[this.lv % colors.length], 0.95);
+      core.setDepth(6);
+      this.tweens.add({
+        targets: core,
+        scale: r / 8,
+        alpha: 0,
+        duration: 280,
+        onComplete: () => core.destroy(),
+      });
+      for (let i = 0; i < 8; i += 1) {
+        const ang = (Math.PI * 2 * i) / 8;
+        const bit = this.add.circle(p.x, p.y, 3, colors[i % colors.length], 0.95);
+        bit.setDepth(7);
+        this.tweens.add({
+          targets: bit,
+          x: p.x + Math.cos(ang) * r * 0.7,
+          y: p.y + Math.sin(ang) * r * 0.7,
+          alpha: 0,
+          duration: 240,
+          onComplete: () => bit.destroy(),
         });
       }
-      hits.forEach((h, i) => {
-        const mark = this.pawMark(h.x, h.y, colors[i % colors.length]);
-        this.tweens.add({
-          targets: mark,
-          alpha: 0,
-          duration: 380,
-          onComplete: () => mark.destroy(),
-        });
-      });
       const dmg = this.pawDmg();
-      const seen = new Set();
       const kids = this.foes.getChildren ? this.foes.getChildren() : [];
       kids.forEach((f) => {
-        if (!f || !f.active || seen.has(f)) return;
-        const near = hits.some((h) => Phaser.Math.Distance.Between(h.x, h.y, f.x, f.y) < 32);
-        if (!near) return;
-        seen.add(f);
-        this.hurtFoe(f, dmg, "16px");
+        if (!f || !f.active) return;
+        if (Phaser.Math.Distance.Between(p.x, p.y, f.x, f.y) < r) this.hurtFoe(f, dmg, "16px");
       });
       if (p.g) p.g.destroy();
     }
@@ -2818,6 +2821,7 @@ function bootArena() {
       this.paws.forEach((p) => {
         p.fuse -= delta;
         if (p.fuse > 0) {
+          if (p.g) p.g.setAlpha(0.55 + 0.45 * Math.abs(Math.sin((500 - p.fuse) * 0.02)));
           next.push(p);
           return;
         }
