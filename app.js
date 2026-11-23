@@ -1,4 +1,4 @@
-const VERSION = "0.4.121";
+const VERSION = "0.4.122";
 const NEON = [0xff3d8a, 0x39f0ff, 0xc8ff3a, 0xff9a3a, 0xb44dff];
 const SHEETS = {
   sumi: "art/sumi/sheet.png",
@@ -1827,6 +1827,7 @@ function bootArena() {
       });
       this.paws = [];
       this.pawAcc = 0;
+      this.pawHue = 0;
       this.cursors = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT");
       this.foes = this.physics.add.group();
       this.shots = this.physics.add.group();
@@ -2745,6 +2746,15 @@ function bootArena() {
         }
       }
     }
+    pawCount() {
+      return Math.min(5, this.lv);
+    }
+    pawColor() {
+      const rainbow = [0xff3d5a, 0xff9a3a, 0xffe14a, 0x7dff4a, 0x39f0ff, 0x4a7dff, 0xb44dff];
+      const c = rainbow[this.pawHue % rainbow.length];
+      this.pawHue += 1;
+      return c;
+    }
     blastR() {
       return Math.min(84, 44 + (this.lv - 1) * 8);
     }
@@ -2764,21 +2774,29 @@ function bootArena() {
       return g;
     }
     dropPaw() {
-      const x = this.player.x;
-      const y = this.player.y + 12;
-      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0xb44dff];
-      this.paws.push({
-        g: this.pawMark(x, y, colors[this.paws.length % colors.length]),
-        x,
-        y,
-        fuse: 500,
-      });
+      const n = this.pawCount();
+      const px = this.player.x;
+      const py = this.player.y + 12;
+      for (let i = 0; i < n; i += 1) {
+        const color = this.pawColor();
+        const spread = n === 1 ? 0 : 18;
+        const ang = n === 1 ? 0 : -0.9 + (1.8 * i) / (n - 1);
+        const x = px + Math.cos(ang) * spread;
+        const y = py + Math.sin(ang) * spread * 0.55;
+        this.paws.push({
+          g: this.pawMark(x, y, color),
+          x,
+          y,
+          color,
+          fuse: 500,
+        });
+      }
     }
     boom(p) {
       const r = this.blastR();
-      const colors = [0xff5ad5, 0xff9a3a, 0xc8ff3a, 0x39f0ff, 0xb44dff];
-      const core = this.add.circle(p.x, p.y, 8, 0xfff6d0, 0.9);
-      core.setStrokeStyle(4, colors[this.lv % colors.length], 0.95);
+      const color = p.color || 0xff9a3a;
+      const core = this.add.circle(p.x, p.y, 8, color, 0.88);
+      core.setStrokeStyle(4, 0xfff6d0, 0.95);
       core.setDepth(6);
       this.tweens.add({
         targets: core,
@@ -2789,7 +2807,7 @@ function bootArena() {
       });
       for (let i = 0; i < 8; i += 1) {
         const ang = (Math.PI * 2 * i) / 8;
-        const bit = this.add.circle(p.x, p.y, 3, colors[i % colors.length], 0.95);
+        const bit = this.add.circle(p.x, p.y, 3, color, 0.95);
         bit.setDepth(7);
         this.tweens.add({
           targets: bit,
